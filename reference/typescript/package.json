@@ -1,0 +1,63 @@
+{
+  "name": "@crovia/seal",
+  "version": "0.5.0",
+  "description": "Reference implementation of Crovia Seal v1 - tamper-evident provenance receipts for AI outputs",
+  "license": "Apache-2.0",
+  "author": "CROVIA Research",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "demo": "tsx examples/demo.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.1.0",
+    "@noble/hashes": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.3.0",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ai",
+    "provenance",
+    "ed25519",
+    "cryptography",
+    "transparency",
+    "compliance",
+    "tamper-evident"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/croviatrust/crovia-seal"
+  },
+  "homepage": "https://seal.croviatrust.com"
+}

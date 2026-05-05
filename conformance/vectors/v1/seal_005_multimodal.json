@@ -1,0 +1,42 @@
+{
+  "seal_version": "crovia.seal.v1",
+  "seal_id": "cs_2026_IIIIIIIIIIIIIIIIIIIIIIIIII",
+  "issuer": {
+    "id": "urn:crovia:seal-issuer:conformance",
+    "pubkey": {
+      "alg": "ed25519",
+      "key_hex": "ff57575dc7af8bfc4d0837cc1ce2017b686a88145dc5579a958e3462fe9a908e"
+    }
+  },
+  "subject": {
+    "input_hash": "sha256:8637b3872cd7ca0d17f55af856070abed8dfff35c60423a8d5e4a703df139c53",
+    "output_hash": "sha256:67c216e550d7ddfc8f79230902b72034137d4cd0a77034e1a5d81b6736a828c7",
+    "input_len": 51,
+    "output_len": 45,
+    "modality": "multimodal"
+  },
+  "generator": {
+    "id": "anthropic/claude-3-5-sonnet",
+    "version": "20241022",
+    "weights_hash": null,
+    "params": {
+      "temperature": "0.3",
+      "max_tokens": "512"
+    }
+  },
+  "timestamp": {
+    "emitted_at": "2026-04-15T00:00:04.000Z",
+    "nonce": "JJJJJJJJJJJJJJJJJJJJJJJJJJ"
+  },
+  "chain": {
+    "prev_seal_hash": "sha256:39cc20b4ba2772fc3b38549692c1fb18eea26cf4355fee4f86fb22cd1a9e41ea",
+    "sequence": 4
+  },
+  "signature": {
+    "alg": "ed25519",
+    "canon": "csc-1",
+    "domain": "CROVIA-SEAL-v1",
+    "payload_hash_alg": "sha256",
+    "sig_hex": "7f08d6c47e044a5614e9259cee0c94be0a5f3a2f838abffe706251c7c36507e81ee371e766c48504d742d971d8fd7bcb38083b24abd0e3521c2ce2646c575404"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "seal_version": "crovia.seal.v1",
+  "seal_id": "cs_2026_MMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "issuer": {
+    "id": "urn:crovia:seal-issuer:conformance",
+    "pubkey": {
+      "alg": "ed25519",
+      "key_hex": "ff57575dc7af8bfc4d0837cc1ce2017b686a88145dc5579a958e3462fe9a908e"
+    }
+  },
+  "subject": {
+    "input_hash": "sha256:8d4c88c15a53d832f8409a4287ce6b78f8c5896b699d5afd61a5ef03e2f759e0",
+    "output_hash": "sha256:ad3527e5cb1aa91cc02afca92626a53539fedf8dd85372e6e338e74a370ee344",
+    "input_len": 34,
+    "output_len": 16,
+    "modality": "text"
+  },
+  "generator": {
+    "id": "google/gemini-1.5-pro",
+    "version": null,
+    "weights_hash": null,
+    "params": {}
+  },
+  "timestamp": {
+    "emitted_at": "2026-04-15T00:00:06.000Z",
+    "nonce": "NNNNNNNNNNNNNNNNNNNNNNNNNN"
+  },
+  "chain": {
+    "prev_seal_hash": "sha256:16f99f740caddc5d3b995797e21636b0598c7a615d2e2911cf745fe1bb2de295",
+    "sequence": 6
+  },
+  "anchor": {
+    "log_url": "https://log.croviatrust.com/v1/entries",
+    "merkle_root": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "merkle_proof": [
+      "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    ],
+    "log_index": 12345,
+    "root_signed_at": "2026-04-15T00:05:00.000Z"
+  },
+  "signature": {
+    "alg": "ed25519",
+    "canon": "csc-1",
+    "domain": "CROVIA-SEAL-v1",
+    "payload_hash_alg": "sha256",
+    "sig_hex": "3dafe932e46de7e08ce2b347153494adc303984697d66bda12449ac8e92f5fa34e9ab0c999cdae1532232bac7270197138e667421d8951a2bacf261a03ca970f"
+  }
+}

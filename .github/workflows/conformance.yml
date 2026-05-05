@@ -1,0 +1,104 @@
+name: conformance
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  # Re-run weekly to catch regressions in upstream cryptography deps
+  schedule:
+    - cron: "0 6 * * 1"   # every Monday at 06:00 UTC
+
+jobs:
+  conformance:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install reference implementation
+        working-directory: reference/python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Regenerate conformance vectors (deterministic)
+        run: |
+          python conformance/generate_vectors.py
+          python conformance/generate_vectors_extended.py
+
+      - name: Verify regenerated vectors are byte-identical to committed
+        run: |
+          if ! git diff --quiet -- conformance/vectors/; then
+            echo "::error::Regenerated vectors differ from committed.  This usually means a non-deterministic change leaked into the reference implementation."
+            git --no-pager diff -- conformance/vectors/
+            exit 1
+          fi
+          echo "Vectors are bit-identical to the committed set."
+
+      - name: Run conformance suite
+        run: python conformance/run_conformance.py
+
+      - name: Run unit tests (if any)
+        working-directory: reference/python
+        run: |
+          if [ -d tests ]; then
+            python -m pip install pytest
+            python -m pytest tests/ -v
+          else
+            echo "No tests/ directory; skipping."
+          fi
+
+  spec-lint:
+    name: "Spec & draft sanity"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install xml2rfc
+        run: python -m pip install xml2rfc
+
+      - name: Compile IETF draft (XML -> TXT + HTML)
+        working-directory: standards
+        run: |
+          for xml in draft-crovia-seal-*.xml; do
+            echo "Compiling $xml ..."
+            xml2rfc --text --html "$xml"
+          done
+
+      - name: Check rendered TXT is ASCII-clean
+        working-directory: standards
+        run: |
+          for txt in draft-crovia-seal-*.txt; do
+            if ! grep -P '^[\x00-\x7F]*$' -q "$txt" 2>/dev/null; then
+              echo "::warning::$txt contains non-ASCII characters"
+            fi
+            python3 -c "
+import sys
+with open('$txt','rb') as f:
+    b = f.read()
+n = sum(1 for c in b if c > 127)
+print(f'$txt: {n} non-ASCII bytes')
+sys.exit(1 if n and '$txt'.endswith('-01.txt') else 0)
+"
+          done

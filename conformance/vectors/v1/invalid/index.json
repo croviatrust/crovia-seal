@@ -1,0 +1,25 @@
+{
+  "version": "v1",
+  "invalid_cases": [
+    {
+      "file": "invalid_01_bad_signature.json",
+      "expected_error": "BadSignature"
+    },
+    {
+      "file": "invalid_02_wrong_domain.json",
+      "expected_error": "WrongDomain"
+    },
+    {
+      "file": "invalid_03_tampered_field.json",
+      "expected_error": "SignatureMismatch"
+    },
+    {
+      "file": "invalid_04_bad_seal_version.json",
+      "expected_error": "UnknownSealVersion"
+    },
+    {
+      "file": "invalid_05_unknown_toplevel.json",
+      "expected_error": "UnknownTopLevelField"
+    }
+  ]
+}

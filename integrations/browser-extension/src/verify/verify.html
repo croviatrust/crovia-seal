@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Crovia Seal - Universal Verifier</title>
+    <link rel="stylesheet" href="./verify.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Crovia Seal - Universal Verifier</h1>
+      <p>
+        Paste or drop any text below. If a Crovia Invisible Mark is embedded,
+        the verifier will recover the <code>seal_id</code> and surface the
+        result. Works offline for mark extraction; transparency-log lookup
+        arrives in a later sprint.
+      </p>
+    </header>
+
+    <section id="drop-zone" class="drop">
+      <div id="drop-hint">
+        Drop text here - or paste below
+      </div>
+    </section>
+
+    <section>
+      <label for="input">Text to analyze</label>
+      <textarea id="input" placeholder="Paste any AI-generated text..."></textarea>
+      <div class="row">
+        <button id="analyze" type="button">Analyze</button>
+        <button id="paste-seal" class="secondary" type="button">Paste a raw Seal JSON</button>
+      </div>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <h2>Result</h2>
+      <div id="result-body"></div>
+    </section>
+
+    <footer>
+      <span class="dim">Local analysis - nothing leaves your browser.</span>
+    </footer>
+
+    <script type="module" src="./verify.ts"></script>
+  </body>
+</html>

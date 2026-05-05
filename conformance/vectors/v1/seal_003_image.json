@@ -1,0 +1,42 @@
+{
+  "seal_version": "crovia.seal.v1",
+  "seal_id": "cs_2026_EEEEEEEEEEEEEEEEEEEEEEEEEE",
+  "issuer": {
+    "id": "urn:crovia:seal-issuer:conformance",
+    "pubkey": {
+      "alg": "ed25519",
+      "key_hex": "ff57575dc7af8bfc4d0837cc1ce2017b686a88145dc5579a958e3462fe9a908e"
+    }
+  },
+  "subject": {
+    "input_hash": "sha256:8e2b1ce9adbc6b6631a8ae95aeeb5d0f96a281fe0759d69e4182965786c214fa",
+    "output_hash": "sha256:38407b95107ae48ac1534338bba43e614052af74562c352e99c654670f06a811",
+    "input_len": 27,
+    "output_len": 136,
+    "modality": "image"
+  },
+  "generator": {
+    "id": "openai/dall-e-3",
+    "version": "2024-10-01",
+    "weights_hash": null,
+    "params": {
+      "size": "1024x1024",
+      "quality": "hd"
+    }
+  },
+  "timestamp": {
+    "emitted_at": "2026-04-15T00:00:02.000Z",
+    "nonce": "FFFFFFFFFFFFFFFFFFFFFFFFFF"
+  },
+  "chain": {
+    "prev_seal_hash": "sha256:3472ed7b5e12da8335c6df8b0697911c403a55aabded61e942eace735d3cc160",
+    "sequence": 2
+  },
+  "signature": {
+    "alg": "ed25519",
+    "canon": "csc-1",
+    "domain": "CROVIA-SEAL-v1",
+    "payload_hash_alg": "sha256",
+    "sig_hex": "f494af1f334bcd82adebf1378d2f65c0e199ff1bae895acb7239dbb232d4613683d8c6023f4db8482ff63cb3b44d10540e8cb1334084972fafb20c3133642107"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "seal_version": "crovia.seal.v1",
+  "seal_id": "cs_2026_KKKKKKKKKKKKKKKKKKKKKKKKKK",
+  "issuer": {
+    "id": "urn:crovia:seal-issuer:conformance",
+    "pubkey": {
+      "alg": "ed25519",
+      "key_hex": "ff57575dc7af8bfc4d0837cc1ce2017b686a88145dc5579a958e3462fe9a908e"
+    }
+  },
+  "subject": {
+    "input_hash": "sha256:55615f52f49fef8267fc9a05348f38240ec69c7d316072c72a6981829e19daa5",
+    "output_hash": "sha256:d65fa73853be84c17e2b2fff6def2833dc57e1e3b5965310832b6c6de4d3daf2",
+    "input_len": 33,
+    "output_len": 105,
+    "modality": "text"
+  },
+  "generator": {
+    "id": "openai/gpt-4o",
+    "version": "2024-08-06",
+    "weights_hash": null,
+    "params": {
+      "temperature": "0.7"
+    }
+  },
+  "timestamp": {
+    "emitted_at": "2026-04-15T00:00:05.000Z",
+    "nonce": "LLLLLLLLLLLLLLLLLLLLLLLLLL"
+  },
+  "chain": {
+    "prev_seal_hash": "sha256:eff3d0b8470dd59807f3cb77bb446f1714441ee42be2fb6ab2bb82dce872ab99",
+    "sequence": 5
+  },
+  "checks": {
+    "memorization": {
+      "db_version": "crovia-memdb-2026-04-15",
+      "method": "ngram-lsh-v1",
+      "matches": 0,
+      "max_conf": "0.03"
+    },
+    "toxicity": {
+      "model": "openai-moderation-latest",
+      "flagged": false,
+      "score_hex": "0x02"
+    }
+  },
+  "signature": {
+    "alg": "ed25519",
+    "canon": "csc-1",
+    "domain": "CROVIA-SEAL-v1",
+    "payload_hash_alg": "sha256",
+    "sig_hex": "d9f809ca29fcf7c5851a7c7048f96a1c6fb4adaa60fae668727e21bd360acbc689b4a0a762d00db48a0181676ce02c633f9987d4da637c8b16af1314e1049a02"
+  }
+}

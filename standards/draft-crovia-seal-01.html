@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>The Crovia Seal: A Cryptographic Receipt Format for AI-Generated Output Provenance</title>
+<meta content="Tarik En Nakhai" name="author">
+<meta content="
+       
+        This document specifies the Crovia Seal v1, a compact, tamper-evident
+        JSON receipt that may be attached to any output produced by an AI
+        generator (large language model, image model, audio model, or
+        composite system) to record its provenance in a cryptographically
+        verifiable form.  A Crovia Seal binds an issuer's identity to the
+        SHA-256 digests of an input/output pair, the identity and parameters
+        of the generator, an emission timestamp, and a per-issuer hash
+        chain, under an Ed25519 signature computed over a strict
+        canonicalization (CSC-1) of the receipt with explicit domain
+        separation.  Optional fields permit transparency-log inclusion
+        proofs and witness co-signatures.  The Seal is designed for offline
+        verification and for inclusion in third-party transparency logs and
+        standards-based revocation infrastructure.
+       
+    " name="description">
+<meta content="xml2rfc 3.33.0" name="generator">
+<meta content="provenance" name="keyword">
+<meta content="AI" name="keyword">
+<meta content="signature" name="keyword">
+<meta content="JSON" name="keyword">
+<meta content="canonicalization" name="keyword">
+<meta content="transparency-log" name="keyword">
+<meta content="draft-crovia-seal-01" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.33.0
+    Python 3.11.4
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.2
+    lxml 6.0.1
+    platformdirs 4.3.6
+    pycountry 23.12.11
+    PyYAML 6.0.3
+    requests 2.32.5
+    wcwidth 0.2.9
+-->
+<link href="draft-crovia-seal-01.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/* 
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">Crovia Seal v1</td>
+<td class="right">May 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">En Nakhai</td>
+<td class="center">Expires 5 November 2026</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Independent Submission</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-crovia-seal-01</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-05" class="published">May 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2026-11-05">5 November 2026</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">T. En Nakhai</div>
+<div class="org">Crovia Trust</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">The Crovia Seal: A Cryptographic Receipt Format for AI-Generated Output Provenance</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">
+        This document specifies the Crovia Seal v1, a compact, tamper-evident
+        JSON receipt that may be attached to any output produced by an AI
+        generator (large language model, image model, audio model, or
+        composite system) to record its provenance in a cryptographically
+        verifiable form.  A Crovia Seal binds an issuer's identity to the
+        SHA-256 digests of an input/output pair, the identity and parameters
+        of the generator, an emission timestamp, and a per-issuer hash
+        chain, under an Ed25519 signature computed over a strict
+        canonicalization (CSC-1) of the receipt with explicit domain
+        separation.  Optional fields permit transparency-log inclusion
+        proofs and witness co-signatures.  The Seal is designed for offline
+        verification and for inclusion in third-party transparency logs and
+        standards-based revocation infrastructure.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note" id="section-note.1">
+      <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+      </h2>
+<p id="section-note.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">
+        Internet-Drafts are working documents of the Internet Engineering
+        Task Force (IETF). Note that other groups may also distribute
+        working documents as Internet-Drafts. The list of current
+        Internet-Drafts is at
+        <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+<p id="section-note.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six
+        months and may be updated, replaced, or obsoleted by other
+        documents at any time.  It is inappropriate to use Internet-Drafts
+        as reference material or to cite them other than as "work in
+        progress".<a href="#section-note.1-3" class="pilcrow">¶</a></p>
+<p id="section-note.1-4">
+        This Internet-Draft will expire on 5 November 2026.<a href="#section-note.1-4" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo-2">
+<a href="#name-status-of-this-memo-2" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 2 November 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-conventions-and-terminology" class="internal xref">Conventions and Terminology</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-design-principles" class="internal xref">Design Principles</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-out-of-scope" class="internal xref">Out of Scope</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-canonicalization-csc-1" class="internal xref">Canonicalization (CSC-1)</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.1">
+                <p id="section-toc.1-1.2.2.1.1"><a href="#section-2.1" class="auto internal xref">2.1</a>.  <a href="#name-motivation" class="internal xref">Motivation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.2">
+                <p id="section-toc.1-1.2.2.2.1"><a href="#section-2.2" class="auto internal xref">2.2</a>.  <a href="#name-rules" class="internal xref">Rules</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.3">
+                <p id="section-toc.1-1.2.2.3.1"><a href="#section-2.3" class="auto internal xref">2.3</a>.  <a href="#name-signing-payload" class="internal xref">Signing Payload</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-seal-structure" class="internal xref">Seal Structure</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-top-level-fields" class="internal xref">Top-Level Fields</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-seal_version" class="internal xref">seal_version</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-seal_id" class="internal xref">seal_id</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.4">
+                <p id="section-toc.1-1.3.2.4.1"><a href="#section-3.4" class="auto internal xref">3.4</a>.  <a href="#name-issuer" class="internal xref">issuer</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.5">
+                <p id="section-toc.1-1.3.2.5.1"><a href="#section-3.5" class="auto internal xref">3.5</a>.  <a href="#name-subject" class="internal xref">subject</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.6">
+                <p id="section-toc.1-1.3.2.6.1"><a href="#section-3.6" class="auto internal xref">3.6</a>.  <a href="#name-generator" class="internal xref">generator</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.7">
+                <p id="section-toc.1-1.3.2.7.1"><a href="#section-3.7" class="auto internal xref">3.7</a>.  <a href="#name-timestamp" class="internal xref">timestamp</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.8">
+                <p id="section-toc.1-1.3.2.8.1"><a href="#section-3.8" class="auto internal xref">3.8</a>.  <a href="#name-chain" class="internal xref">chain</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.9">
+                <p id="section-toc.1-1.3.2.9.1"><a href="#section-3.9" class="auto internal xref">3.9</a>.  <a href="#name-checks-optional" class="internal xref">checks (OPTIONAL)</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.10">
+                <p id="section-toc.1-1.3.2.10.1"><a href="#section-3.10" class="auto internal xref">3.10</a>. <a href="#name-anchor-optional" class="internal xref">anchor (OPTIONAL)</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.11">
+                <p id="section-toc.1-1.3.2.11.1"><a href="#section-3.11" class="auto internal xref">3.11</a>. <a href="#name-signature" class="internal xref">signature</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-witnesses-optional" class="internal xref">Witnesses (OPTIONAL)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-transparency-log-informativ" class="internal xref">Transparency Log (Informative)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-algorithm-agility-post-quan" class="internal xref">Algorithm Agility (Post-Quantum)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-replay-across-protocols" class="internal xref">Replay Across Protocols</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-replay-within-the-protocol" class="internal xref">Replay Within the Protocol</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-json-malleability" class="internal xref">JSON Malleability</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.4">
+                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-field-tampering" class="internal xref">Field Tampering</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.5">
+                <p id="section-toc.1-1.7.2.5.1"><a href="#section-7.5" class="auto internal xref">7.5</a>.  <a href="#name-key-compromise" class="internal xref">Key Compromise</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.6">
+                <p id="section-toc.1-1.7.2.6.1"><a href="#section-7.6" class="auto internal xref">7.6</a>.  <a href="#name-downgrade" class="internal xref">Downgrade</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.7">
+                <p id="section-toc.1-1.7.2.7.1"><a href="#section-7.7" class="auto internal xref">7.7</a>.  <a href="#name-canonicalization-ambiguity" class="internal xref">Canonicalization Ambiguity</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.8">
+                <p id="section-toc.1-1.7.2.8.1"><a href="#section-7.8" class="auto internal xref">7.8</a>.  <a href="#name-hash-choice" class="internal xref">Hash Choice</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.9">
+                <p id="section-toc.1-1.7.2.9.1"><a href="#section-7.9" class="auto internal xref">7.9</a>.  <a href="#name-randomness" class="internal xref">Randomness</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.10">
+                <p id="section-toc.1-1.7.2.10.1"><a href="#section-7.10" class="auto internal xref">7.10</a>. <a href="#name-content-privacy" class="internal xref">Content Privacy</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-media-type-registration" class="internal xref">Media Type Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-urn-sub-namespace-registrat" class="internal xref">URN Sub-Namespace Registration</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.1">
+                <p id="section-toc.1-1.9.2.1.1"><a href="#section-9.1" class="auto internal xref">9.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.2">
+                <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="auto internal xref">9.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-reference-implementation" class="internal xref">Reference Implementation</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-changelog" class="internal xref">Changelog</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-acknowledgements" class="internal xref">Acknowledgements</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#appendix-D" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">
+        Outputs produced by automated generative systems (large language
+        models, diffusion image models, speech-synthesis pipelines, or
+        composite agents) are difficult to attribute reliably after they
+        leave the generating system.  Today, an output may be quoted,
+        edited, copy-pasted, ingested into a search index, surfaced in a
+        court filing, or attributed to the wrong vendor with no available
+        chain of custody.  Both vendors and downstream consumers have an
+        operational interest in an attestation that fixes, at the moment
+        of generation, the bytes that were produced and the parameters
+        under which they were produced.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">
+        This document specifies a single such attestation: the
+        <strong>Crovia Seal</strong>.  A Seal is a JSON object whose bytes
+        are signed by an issuer's Ed25519 private key after a deterministic
+        canonicalization (Section 3) and with explicit cryptographic
+        domain separation (Section 3.3).  A Seal carries the SHA-256
+        digest of the input that was provided to the generator, the
+        SHA-256 digest of the output, the generator identity and
+        generation parameters, an issuance timestamp, and a per-issuer
+        append-only hash chain.  Optional fields carry inclusion proofs
+        from public transparency logs and additional co-signatures
+        ("witnesses").<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">
+        A Seal does <strong>not</strong> attest to the truthfulness,
+        lawfulness, originality, or safety of the output.  It is a
+        receipt, not a verdict.  This deliberate narrowness is essential
+        to the protocol's value: the Seal can be re-verified by any party
+        possessing only the Seal, the issuer's public key, and the
+        original output bytes, without dependence on any judgement that
+        cannot be cryptographically checked.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<div id="conventions">
+<section id="section-1.1">
+        <h3 id="name-conventions-and-terminology">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-conventions-and-terminology" class="section-name selfRef">Conventions and Terminology</a>
+        </h3>
+<p id="section-1.1-1">
+          The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>",
+          "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>",
+          "<span class="bcp14">SHALL NOT</span>", "<span class="bcp14">SHOULD</span>",
+          "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>",
+          "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+          "<span class="bcp14">OPTIONAL</span>" in this document are to be
+          interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>
+          <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in
+          all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">
+          The following terms are used throughout this document:<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-1.1-3">
+          <dt id="section-1.1-3.1">Seal:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.2">a single JSON object conforming to <a href="#seal-structure" class="auto internal xref">Section 3</a>.<a href="#section-1.1-3.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.3">Issuer:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.4">the entity producing and signing Seals; identified by its
+              long-term Ed25519 public key.<a href="#section-1.1-3.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.5">Witness:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.6">an optional co-signer of a Seal (<a href="#witnesses" class="auto internal xref">Section 4</a>).<a href="#section-1.1-3.6" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.7">Subject:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.8">the input/output pair that the Seal describes.<a href="#section-1.1-3.8" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.9">Generator:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.10">the AI model or system that produced the output.<a href="#section-1.1-3.10" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.11">Chain:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.12">the per-issuer append-only sequence of Seals
+              (<a href="#chain" class="auto internal xref">Section 3.8</a>).<a href="#section-1.1-3.12" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.13">Anchor:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.14">an optional proof that the Seal was included in a public
+              transparency log (<a href="#transparency-log" class="auto internal xref">Section 5</a>).<a href="#section-1.1-3.14" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.15">CSC-1:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.16">Crovia Seal Canonicalization v1
+              (<a href="#canonicalization" class="auto internal xref">Section 2</a>).<a href="#section-1.1-3.16" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-3.17">Payload:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-3.18">the exact byte sequence over which a signature is computed
+              (<a href="#signing-payload" class="auto internal xref">Section 2.3</a>).<a href="#section-1.1-3.18" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="design-principles">
+<section id="section-1.2">
+        <h3 id="name-design-principles">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-design-principles" class="section-name selfRef">Design Principles</a>
+        </h3>
+<ul class="normal">
+<li class="normal" id="section-1.2-1.1">
+            <strong>Record, do not judge.</strong> The Seal MUST NOT
+            encode verdicts on lawfulness, harm, or quality.  It MAY
+            embed analytical signals with explicit confidence.<a href="#section-1.2-1.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-1.2">
+            <strong>Verify offline.</strong> The core verification path
+            MUST require no network access.<a href="#section-1.2-1.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-1.3">
+            <strong>Composable.</strong> The schema MUST permit optional
+            extensions (co-signatures, post-quantum signatures,
+            transparency anchors) without breaking base verifiers.<a href="#section-1.2-1.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-1.4">
+            <strong>Canonical.</strong> The exact bytes that are signed
+            MUST be derivable from the Seal by a single, fully specified
+            canonicalization algorithm.<a href="#section-1.2-1.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-1.5">
+            <strong>Defensive by default.</strong> All cryptographic
+            operations MUST use domain separation; no signed payload may
+            be replayed in another protocol.<a href="#section-1.2-1.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.2-1.6">
+            <strong>Fail closed.</strong> Any unrecognized field or
+            algorithm MUST cause verification to fail unless the verifier
+            explicitly opts into permissive mode.<a href="#section-1.2-1.6" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="out-of-scope">
+<section id="section-1.3">
+        <h3 id="name-out-of-scope">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-out-of-scope" class="section-name selfRef">Out of Scope</a>
+        </h3>
+<p id="section-1.3-1">
+          The following are explicitly out of scope for this
+          specification.  An attestation that silently included any of
+          them would be misunderstood by users:<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.3-2.1">Detection of AI-generated content from the output alone
+              (no watermarking).<a href="#section-1.3-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.3-2.2">Judgements about copyright, fairness, accuracy, or safety
+              of the output.<a href="#section-1.3-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.3-2.3">Revocation: a Seal, once emitted, is an immutable
+              historical record.  Issuers are identified by public key;
+              key rotation is handled by the transparency log, not by
+              Seal-level revocation.<a href="#section-1.3-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.3-2.4">Authentication of the human user that requested the
+              generation.  The Seal binds bytes, not personhoods.<a href="#section-1.3-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.3-2.5">Confidentiality.  Seals are over plaintext.<a href="#section-1.3-2.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+</section>
+</div>
+<div id="canonicalization">
+<section id="section-2">
+      <h2 id="name-canonicalization-csc-1">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-canonicalization-csc-1" class="section-name selfRef">Canonicalization (CSC-1)</a>
+      </h2>
+<section id="section-2.1">
+        <h3 id="name-motivation">
+<a href="#section-2.1" class="section-number selfRef">2.1. </a><a href="#name-motivation" class="section-name selfRef">Motivation</a>
+        </h3>
+<p id="section-2.1-1">
+          JSON <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span> is syntactically flexible:
+          whitespace, key ordering, number formatting, and string-escape
+          choices can vary while producing the same logical value.  A
+          signature over a JSON text requires an unambiguous
+          serialization.<a href="#section-2.1-1" class="pilcrow">¶</a></p>
+<p id="section-2.1-2">
+          CSC-1 is a strict subset of the JSON Canonicalization Scheme
+          (JCS) <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>.  It adopts the deterministic
+          ordering and escaping rules of JCS but forbids floating-point
+          numbers in signed payloads, sidestepping the edge cases of
+          ECMA-262 number serialization.  This restriction does not
+          constrain use cases: continuous parameters such as
+          <code>temperature</code> MUST be encoded as strings when carried
+          inside the signed payload (<a href="#generator-field" class="auto internal xref">Section 3.6</a>).<a href="#section-2.1-2" class="pilcrow">¶</a></p>
+</section>
+<div id="csc-rules">
+<section id="section-2.2">
+        <h3 id="name-rules">
+<a href="#section-2.2" class="section-number selfRef">2.2. </a><a href="#name-rules" class="section-name selfRef">Rules</a>
+        </h3>
+<p id="section-2.2-1">
+          A CSC-1-serialized JSON value is a UTF-8 byte sequence
+          produced as follows:<a href="#section-2.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-2.2-2">
+          <li id="section-2.2-2.1">
+            <code>null</code> -&gt; <code>null</code><a href="#section-2.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.2">
+            <code>true</code> / <code>false</code> -&gt; <code>true</code> / <code>false</code><a href="#section-2.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.3">
+            integers (JSON number with no fractional part, within
+            [-(2^53 - 1), 2^53 - 1]) -&gt; shortest decimal
+            representation, no leading zeros, no <code>+</code> sign.<a href="#section-2.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.4">
+            strings -&gt; UTF-8 JSON string literal using only the
+            escapes required by <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span>:
+            <code>\"</code>, <code>\\</code>, <code>\b</code>, <code>\f</code>,
+            <code>\n</code>, <code>\r</code>, <code>\t</code>, and
+            <code>\u00XX</code> for U+0000..U+001F.  All other code points
+            MUST be emitted literally.<a href="#section-2.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.5">
+            arrays -&gt; <code>[</code> followed by canonicalized elements
+            separated by <code>,</code> followed by <code>]</code>.  No interior
+            whitespace.<a href="#section-2.2-2.5" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.6">
+            objects -&gt; <code>{</code> followed by <code>"key":value</code>
+            pairs separated by <code>,</code> followed by <code>}</code>.  Keys
+            MUST be sorted ascending by their UTF-16 code-unit sequence
+            (equivalent to JavaScript
+            <code>Array.prototype.sort</code> on strings).  No interior
+            whitespace.<a href="#section-2.2-2.6" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.7">
+            floats, NaN, Infinity, and <code>-0</code> MUST cause
+            serialization to fail with <code>NonCanonicalNumber</code>.<a href="#section-2.2-2.7" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.8">
+            duplicate object keys MUST cause serialization to fail with
+            <code>DuplicateKey</code>.<a href="#section-2.2-2.8" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.2-2.9">
+            non-string object keys MUST cause serialization to fail with
+            <code>NonStringKey</code>.<a href="#section-2.2-2.9" class="pilcrow">¶</a>
+</li>
+        </ol>
+</section>
+</div>
+<div id="signing-payload">
+<section id="section-2.3">
+        <h3 id="name-signing-payload">
+<a href="#section-2.3" class="section-number selfRef">2.3. </a><a href="#name-signing-payload" class="section-name selfRef">Signing Payload</a>
+        </h3>
+<p id="section-2.3-1">
+          Given a Seal <em>S</em>, the signing payload <em>P(S)</em> is
+          computed as:<a href="#section-2.3-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-2.3-2">
+<pre>
+P(S) = DOMAIN || 0x0A || CSC1(S \ {signature, witnesses})
+</pre><a href="#section-2.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-2.3-3">where:<a href="#section-2.3-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2.3-4.1">
+            <code>DOMAIN</code> is the ASCII string <code>"CROVIA-SEAL-v1"</code> (14 bytes).<a href="#section-2.3-4.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-2.3-4.2">
+            <code>0x0A</code> is a single newline byte, acting as an unambiguous separator.<a href="#section-2.3-4.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-2.3-4.3">
+            <code>S \ {signature, witnesses}</code> denotes the Seal with
+            the <code>signature</code> and <code>witnesses</code> top-level
+            fields removed (they are computed over the payload, not part
+            of it).<a href="#section-2.3-4.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-2.3-4.4">
+            <code>CSC1(...)</code> is the UTF-8 serialization per <a href="#csc-rules" class="auto internal xref">Section 2.2</a>.<a href="#section-2.3-4.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-2.3-5">
+          The <code>DOMAIN</code> prefix ensures that a signature over
+          <em>P(S)</em> cannot be replayed as a valid signature in any
+          other protocol that does not use the same prefix.
+          Implementations MUST NOT omit the prefix.  Verifiers MUST
+          reject any Seal whose signature was produced without the
+          prefix.<a href="#section-2.3-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="seal-structure">
+<section id="section-3">
+      <h2 id="name-seal-structure">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-seal-structure" class="section-name selfRef">Seal Structure</a>
+      </h2>
+<section id="section-3.1">
+        <h3 id="name-top-level-fields">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-top-level-fields" class="section-name selfRef">Top-Level Fields</a>
+        </h3>
+<p id="section-3.1-1">
+          A conformant Seal is a JSON object with exactly the top-level
+          fields listed below.  Unknown top-level fields MUST cause
+          verification to fail (the "fail closed" principle).<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+          <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Field</th>
+              <th class="text-left" rowspan="1" colspan="1">Required</th>
+              <th class="text-left" rowspan="1" colspan="1">Type</th>
+              <th class="text-left" rowspan="1" colspan="1">Section</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>seal_version</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">4.2</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>seal_id</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">4.3</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>issuer</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.4</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>subject</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.5</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>generator</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.6</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>timestamp</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.7</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>chain</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.8</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>checks</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">OPTIONAL</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.9</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>anchor</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">OPTIONAL</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.10</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>signature</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">4.11</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>witnesses</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">OPTIONAL</td>
+              <td class="text-left" rowspan="1" colspan="1">array</td>
+              <td class="text-left" rowspan="1" colspan="1">6</td>
+            </tr>
+          </tbody>
+        </table>
+</section>
+<section id="section-3.2">
+        <h3 id="name-seal_version">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-seal_version" class="section-name selfRef">seal_version</a>
+        </h3>
+<p id="section-3.2-1">
+          The literal string <code>"crovia.seal.v1"</code>.  Any other
+          value MUST cause verification to fail.<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-3.3">
+        <h3 id="name-seal_id">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-seal_id" class="section-name selfRef">seal_id</a>
+        </h3>
+<p id="section-3.3-1">
+          A string matching the regular expression
+          <code>^cs_[0-9]{4}_[A-Z2-7]{26}$</code>: prefix <code>cs_</code>,
+          4-digit issuance year, underscore, 26 RFC 4648 base32
+          characters <span>[<a href="#RFC4648" class="cite xref">RFC4648</a>]</span> (alphabet A-Z, 2-7, no
+          padding) encoding 16 random bytes (128 bits).  The random
+          bytes MUST be produced by a cryptographically secure source.<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-3.4">
+        <h3 id="name-issuer">
+<a href="#section-3.4" class="section-number selfRef">3.4. </a><a href="#name-issuer" class="section-name selfRef">issuer</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.4-1">
+<pre>
+{
+  "id":     string,           ; urn:crovia:seal-issuer:&lt;name&gt;
+  "pubkey": { "alg": "ed25519", "key_hex": string }
+}
+</pre><a href="#section-3.4-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.4-2">
+          <code>key_hex</code> is 64 lowercase hexadecimal characters (32
+          raw bytes, Ed25519 public key per <span>[<a href="#RFC8032" class="cite xref">RFC8032</a>]</span>).
+          Other algorithms are reserved for
+          <a href="#algorithm-agility" class="auto internal xref">Section 6</a>.<a href="#section-3.4-2" class="pilcrow">¶</a></p>
+</section>
+<section id="section-3.5">
+        <h3 id="name-subject">
+<a href="#section-3.5" class="section-number selfRef">3.5. </a><a href="#name-subject" class="section-name selfRef">subject</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.5-1">
+<pre>
+{
+  "input_hash":  "sha256:" + 64 lowercase hex chars,
+  "output_hash": "sha256:" + 64 lowercase hex chars,
+  "input_len":   integer,    ; byte length of input
+  "output_len":  integer,    ; byte length of output
+  "modality":    string      ; one of: text/code/image/audio/multimodal
+}
+</pre><a href="#section-3.5-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.5-2">
+          The Seal does NOT carry the content itself.  The hashes commit
+          to the content; verifiers who possess the content can re-hash
+          and compare.<a href="#section-3.5-2" class="pilcrow">¶</a></p>
+</section>
+<div id="generator-field">
+<section id="section-3.6">
+        <h3 id="name-generator">
+<a href="#section-3.6" class="section-number selfRef">3.6. </a><a href="#name-generator" class="section-name selfRef">generator</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.6-1">
+<pre>
+{
+  "id":           string,          ; e.g. "openai/gpt-4o"
+  "version":      string | null,   ; e.g. "2024-08-06"
+  "weights_hash": string | null,   ; if available
+  "params":       object           ; key -&gt; string map of gen-params
+}
+</pre><a href="#section-3.6-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.6-2">
+          All parameter values MUST be strings in the signed payload (per
+          the floating-point restriction in
+          <a href="#canonicalization" class="auto internal xref">Section 2</a>).  Numeric values like
+          <code>temperature=0.7</code> MUST be encoded as
+          <code>"0.7"</code>.<a href="#section-3.6-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-3.7">
+        <h3 id="name-timestamp">
+<a href="#section-3.7" class="section-number selfRef">3.7. </a><a href="#name-timestamp" class="section-name selfRef">timestamp</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.7-1">
+<pre>
+{
+  "emitted_at": string,   ; RFC 3339 UTC, ms precision
+                          ; e.g. "2026-04-15T12:34:56.789Z"
+  "nonce":      string    ; 26 RFC 4648 base32 chars (16 random bytes)
+}
+</pre><a href="#section-3.7-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.7-2">
+          <code>emitted_at</code> follows <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span>.
+          Issuers MUST use UTC.  The <code>nonce</code> guarantees that two
+          Seals issued in the same millisecond are still distinct under
+          <code>P(S)</code>.<a href="#section-3.7-2" class="pilcrow">¶</a></p>
+</section>
+<div id="chain">
+<section id="section-3.8">
+        <h3 id="name-chain">
+<a href="#section-3.8" class="section-number selfRef">3.8. </a><a href="#name-chain" class="section-name selfRef">chain</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.8-1">
+<pre>
+{
+  "prev_seal_hash": "sha256:" + 64 hex chars | null,
+  "sequence":       integer (&gt;= 0)
+}
+</pre><a href="#section-3.8-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.8-2">
+          <code>prev_seal_hash</code> is the SHA-256 over the canonical
+          payload <em>P(S_prev)</em> of the immediately preceding Seal
+          from the same issuer, or <code>null</code> for the genesis Seal
+          (<code>sequence == 0</code>).  Verifiers that track issuer chains
+          MUST detect:<a href="#section-3.8-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.8-3.1">
+            <strong>Fork</strong>: two Seals with the same issuer key
+            and same <code>chain.sequence</code> but different
+            <code>prev_seal_hash</code>.  This is non-repudiable evidence of
+            issuer misbehavior or key compromise.<a href="#section-3.8-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.8-3.2">
+            <strong>Gap</strong>: missing sequence numbers.  A verifier
+            with partial history SHOULD obtain the missing Seals from
+            the transparency log before accepting.<a href="#section-3.8-3.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<section id="section-3.9">
+        <h3 id="name-checks-optional">
+<a href="#section-3.9" class="section-number selfRef">3.9. </a><a href="#name-checks-optional" class="section-name selfRef">checks (OPTIONAL)</a>
+        </h3>
+<p id="section-3.9-1">
+          Free-form object carrying analytical claims such as
+          memorization checks, safety probes, toxicity scores.  The
+          schema for specific check types is defined in separate check
+          specifications; the Seal itself imposes no constraints on the
+          content beyond CSC-1 compatibility.<a href="#section-3.9-1" class="pilcrow">¶</a></p>
+<p id="section-3.9-2">Example:<a href="#section-3.9-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3.9-3">
+<pre>
+{
+  "memorization": {
+    "db_version": "crovia-memdb-2026-04-15",
+    "method":     "ngram-lsh-v1",
+    "matches":    0,
+    "max_conf":   "0.03"
+  }
+}
+</pre><a href="#section-3.9-3" class="pilcrow">¶</a>
+</div>
+<p id="section-3.9-4">
+          Each check produced by an issuer is signed along with the rest
+          of the Seal; its validity as evidence depends on the method's
+          own robustness, which is out of scope for this specification.<a href="#section-3.9-4" class="pilcrow">¶</a></p>
+</section>
+<section id="section-3.10">
+        <h3 id="name-anchor-optional">
+<a href="#section-3.10" class="section-number selfRef">3.10. </a><a href="#name-anchor-optional" class="section-name selfRef">anchor (OPTIONAL)</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.10-1">
+<pre>
+{
+  "log_url":        string,
+  "merkle_root":    "sha256:" + 64 hex chars,
+  "merkle_proof":   [ "sha256:" + hex, ... ],
+  "log_index":      integer (&gt;= 0),
+  "root_signed_at": string (RFC 3339 UTC)
+}
+</pre><a href="#section-3.10-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.10-2">
+          The anchor commits the Seal to a public transparency log.
+          The log operator's signature over <code>merkle_root</code> is not
+          part of this Seal and MUST be fetched separately from
+          <code>log_url</code>.<a href="#section-3.10-2" class="pilcrow">¶</a></p>
+</section>
+<section id="section-3.11">
+        <h3 id="name-signature">
+<a href="#section-3.11" class="section-number selfRef">3.11. </a><a href="#name-signature" class="section-name selfRef">signature</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-3.11-1">
+<pre>
+{
+  "alg":              "ed25519",
+  "canon":            "csc-1",
+  "domain":           "CROVIA-SEAL-v1",
+  "payload_hash_alg": "sha256",
+  "sig_hex":          string     ; 128 hex chars (64 raw bytes)
+}
+</pre><a href="#section-3.11-1" class="pilcrow">¶</a>
+</div>
+<p id="section-3.11-2">
+          The signature is computed as
+          <code>Ed25519_sign(privkey, P(S))</code> where <em>P(S)</em> is
+          defined in <a href="#signing-payload" class="auto internal xref">Section 2.3</a>.  Implementations
+          MUST NOT hash the payload before signing; Ed25519 internally
+          handles the hash (SHA-512).  The <code>payload_hash_alg</code>
+          field is informational, indicating the algorithm used to
+          derive <code>prev_seal_hash</code> and other SHA-256 digests in
+          the Seal.<a href="#section-3.11-2" class="pilcrow">¶</a></p>
+</section>
+</section>
+</div>
+<div id="witnesses">
+<section id="section-4">
+      <h2 id="name-witnesses-optional">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-witnesses-optional" class="section-name selfRef">Witnesses (OPTIONAL)</a>
+      </h2>
+<div class="alignLeft art-text artwork" id="section-4-1">
+<pre>
+"witnesses": [
+  {
+    "id":      string,
+    "pubkey":  { "alg": "ed25519", "key_hex": string },
+    "sig_hex": string
+  },
+  ...
+]
+</pre><a href="#section-4-1" class="pilcrow">¶</a>
+</div>
+<p id="section-4-2">
+        A witness signs the same canonical payload <em>P(S)</em> as the
+        issuer.  Witness signatures are OPTIONAL and additive: a Seal
+        with no witnesses is valid; a Seal with invalid witness
+        signatures is invalid overall (fail-closed).<a href="#section-4-2" class="pilcrow">¶</a></p>
+<p id="section-4-3">
+        Typical witnesses: consortium co-signers (civil-society
+        organizations, academic institutions, regulatory observers).
+        Witnesses endorse the Seal without endorsing its content.<a href="#section-4-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="transparency-log">
+<section id="section-5">
+      <h2 id="name-transparency-log-informativ">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-transparency-log-informativ" class="section-name selfRef">Transparency Log (Informative)</a>
+      </h2>
+<p id="section-5-1">
+        A conformant transparency log accepts Seals and periodically
+        publishes a signed Merkle root over the Seals it has received.
+        The log API design is outside the scope of this document; an
+        implementation profile compatible with
+        <span>[<a href="#RFC9162" class="cite xref">RFC9162</a>]</span>-style logs is anticipated in a
+        companion document.<a href="#section-5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="algorithm-agility">
+<section id="section-6">
+      <h2 id="name-algorithm-agility-post-quan">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-algorithm-agility-post-quan" class="section-name selfRef">Algorithm Agility (Post-Quantum)</a>
+      </h2>
+<p id="section-6-1">
+        Future versions of this specification MAY permit alternative
+        signature algorithms (e.g., Dilithium, Falcon) by extending the
+        <code>signature.alg</code> vocabulary.  A Seal MAY additionally
+        carry a <code>pq_signature</code> top-level field with an
+        independent post-quantum signature over the same payload
+        <em>P(S)</em>.  Verifiers that support only Ed25519 MUST ignore
+        <code>pq_signature</code> and rely on <code>signature</code>.
+        Verifiers MAY require both signatures to validate (strict mode).<a href="#section-6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-7">
+      <h2 id="name-security-considerations">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<section id="section-7.1">
+        <h3 id="name-replay-across-protocols">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-replay-across-protocols" class="section-name selfRef">Replay Across Protocols</a>
+        </h3>
+<p id="section-7.1-1">
+          Prevented by domain separation
+          (<a href="#signing-payload" class="auto internal xref">Section 2.3</a>).  A signature on
+          <em>P(S)</em> cannot be reinterpreted as a valid signature on
+          a payload of any other protocol that does not use the exact
+          same 14-byte <code>CROVIA-SEAL-v1</code> prefix followed by a
+          newline.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.2">
+        <h3 id="name-replay-within-the-protocol">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-replay-within-the-protocol" class="section-name selfRef">Replay Within the Protocol</a>
+        </h3>
+<p id="section-7.2-1">
+          A Seal is a historical record; "replay" of a Seal is a
+          semantic issue, not a cryptographic one.  The
+          <code>seal_id</code>, <code>timestamp</code>, and
+          <code>chain.sequence</code> fields make each Seal unique.
+          Verifiers that track seen seal IDs can detect duplication
+          attempts.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.3">
+        <h3 id="name-json-malleability">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-json-malleability" class="section-name selfRef">JSON Malleability</a>
+        </h3>
+<p id="section-7.3-1">
+          Eliminated by CSC-1
+          (<a href="#canonicalization" class="auto internal xref">Section 2</a>).  Any tool that reorders
+          keys, adds whitespace, or re-escapes strings produces a
+          different byte sequence and hence an invalid signature.<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.4">
+        <h3 id="name-field-tampering">
+<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-field-tampering" class="section-name selfRef">Field Tampering</a>
+        </h3>
+<p id="section-7.4-1">
+          The signature covers every field except <code>signature</code>
+          and <code>witnesses</code>, which are themselves cryptographic.
+          Adding, modifying, or deleting any field invalidates the
+          signature.<a href="#section-7.4-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.5">
+        <h3 id="name-key-compromise">
+<a href="#section-7.5" class="section-number selfRef">7.5. </a><a href="#name-key-compromise" class="section-name selfRef">Key Compromise</a>
+        </h3>
+<p id="section-7.5-1">
+          If an issuer key is compromised, the attacker can issue valid
+          Seals until the compromise is detected and the key is revoked
+          in the transparency log's trust root.  The issuer hash chain
+          MAY reveal the compromise if the attacker issues a forking
+          Seal.<a href="#section-7.5-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.6">
+        <h3 id="name-downgrade">
+<a href="#section-7.6" class="section-number selfRef">7.6. </a><a href="#name-downgrade" class="section-name selfRef">Downgrade</a>
+        </h3>
+<p id="section-7.6-1">
+          <code>seal_version</code>, <code>signature.alg</code>,
+          <code>signature.canon</code>, and <code>signature.domain</code> are
+          all inside the signed payload.  An attacker cannot negotiate
+          a weaker algorithm without producing a wholly new signature.<a href="#section-7.6-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.7">
+        <h3 id="name-canonicalization-ambiguity">
+<a href="#section-7.7" class="section-number selfRef">7.7. </a><a href="#name-canonicalization-ambiguity" class="section-name selfRef">Canonicalization Ambiguity</a>
+        </h3>
+<p id="section-7.7-1">
+          CSC-1 forbids floats in the signed payload precisely to avoid
+          the numeric edge cases of JCS.  Strings carrying numeric
+          values MUST use a documented format
+          (see <a href="#generator-field" class="auto internal xref">Section 3.6</a>).<a href="#section-7.7-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.8">
+        <h3 id="name-hash-choice">
+<a href="#section-7.8" class="section-number selfRef">7.8. </a><a href="#name-hash-choice" class="section-name selfRef">Hash Choice</a>
+        </h3>
+<p id="section-7.8-1">
+          SHA-256 is used for all digests (content commitments, chain
+          links).  Migration to SHA-3 or BLAKE3 is anticipated in a
+          future minor version; the <code>payload_hash_alg</code> field
+          signals the choice.<a href="#section-7.8-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.9">
+        <h3 id="name-randomness">
+<a href="#section-7.9" class="section-number selfRef">7.9. </a><a href="#name-randomness" class="section-name selfRef">Randomness</a>
+        </h3>
+<p id="section-7.9-1">
+          All random values (<code>seal_id</code> suffix,
+          <code>timestamp.nonce</code>) MUST be produced by a
+          cryptographically secure source (e.g.,
+          <code>os.urandom</code>, the <code>secrets</code> module in Python,
+          <code>crypto.randomBytes</code> in Node.js).<a href="#section-7.9-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-7.10">
+        <h3 id="name-content-privacy">
+<a href="#section-7.10" class="section-number selfRef">7.10. </a><a href="#name-content-privacy" class="section-name selfRef">Content Privacy</a>
+        </h3>
+<p id="section-7.10-1">
+          The Seal commits to input/output hashes, never content.
+          Content-bearing fields such as <code>generator.params</code> are
+          in the clear; issuers MUST NOT place sensitive user data in
+          these fields.<a href="#section-7.10-1" class="pilcrow">¶</a></p>
+</section>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-8">
+      <h2 id="name-iana-considerations">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<section id="section-8.1">
+        <h3 id="name-media-type-registration">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-media-type-registration" class="section-name selfRef">Media Type Registration</a>
+        </h3>
+<p id="section-8.1-1">
+          IANA is requested to register the following media type per
+          <span>[<a href="#RFC6838" class="cite xref">RFC6838</a>]</span>:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-8.1-2">
+          <dt id="section-8.1-2.1">Type name:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.2">application<a href="#section-8.1-2.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.3">Subtype name:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.4">vnd.crovia.seal+json<a href="#section-8.1-2.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.5">Required parameters:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.6">none<a href="#section-8.1-2.6" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.7">Optional parameters:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.8">none<a href="#section-8.1-2.8" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.9">Encoding:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.10">UTF-8 (per <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span>)<a href="#section-8.1-2.10" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.11">Security considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.12">see <a href="#security-considerations" class="auto internal xref">Section 7</a><a href="#section-8.1-2.12" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.13">Interoperability:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.14">see this document<a href="#section-8.1-2.14" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.15">Published specification:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.16">this document<a href="#section-8.1-2.16" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.17">Applications using this type:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.18">provenance attestation systems for AI-generated content<a href="#section-8.1-2.18" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-8.1-2.19">Author/Change controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-8.1-2.20">CROVIA Research<a href="#section-8.1-2.20" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+<section id="section-8.2">
+        <h3 id="name-urn-sub-namespace-registrat">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-urn-sub-namespace-registrat" class="section-name selfRef">URN Sub-Namespace Registration</a>
+        </h3>
+<p id="section-8.2-1">
+          IANA is requested to register the URN namespace
+          <code>urn:crovia:seal-issuer:</code> per <span>[<a href="#RFC8141" class="cite xref">RFC8141</a>]</span>
+          for the identification of Crovia Seal issuers by stable URN.
+          The complete formal namespace registration template will be
+          provided in a companion document.<a href="#section-8.2-1" class="pilcrow">¶</a></p>
+</section>
+</section>
+</div>
+<section id="section-9">
+      <h2 id="name-references">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-9.1">
+        <h3 id="name-normative-references">
+<a href="#section-9.1" class="section-number selfRef">9.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC3339">[RFC3339]</dt>
+        <dd>
+<span class="refAuthor">Klyne, G.</span> and <span class="refAuthor">C. Newman</span>, <span class="refTitle">"Date and Time on the Internet: Timestamps"</span>, <span class="seriesInfo">RFC 3339</span>, <time datetime="2002-07" class="refDate">July 2002</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3339">https://www.rfc-editor.org/info/rfc3339</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC4648">[RFC4648]</dt>
+        <dd>
+<span class="refAuthor">Josefsson, S.</span>, <span class="refTitle">"The Base16, Base32, and Base64 Data Encodings"</span>, <span class="seriesInfo">RFC 4648</span>, <time datetime="2006-10" class="refDate">October 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4648">https://www.rfc-editor.org/info/rfc4648</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6838">[RFC6838]</dt>
+        <dd>
+<span class="refAuthor">Freed, N.</span>, <span class="refAuthor">Klensin, J.</span>, and <span class="refAuthor">T. Hansen</span>, <span class="refTitle">"Media Type Specifications and Registration Procedures"</span>, <span class="seriesInfo">BCP 13</span>, <span class="seriesInfo">RFC 6838</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6838">https://www.rfc-editor.org/info/rfc6838</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8032">[RFC8032]</dt>
+        <dd>
+<span class="refAuthor">Josefsson, S.</span> and <span class="refAuthor">I. Liusvaara</span>, <span class="refTitle">"Edwards-Curve Digital Signature Algorithm (EdDSA)"</span>, <span class="seriesInfo">RFC 8032</span>, <time datetime="2017-01" class="refDate">January 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8032">https://www.rfc-editor.org/info/rfc8032</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8141">[RFC8141]</dt>
+        <dd>
+<span class="refAuthor">Saint-Andre, P.</span> and <span class="refAuthor">J. Klensin</span>, <span class="refTitle">"Uniform Resource Names (URNs)"</span>, <span class="seriesInfo">RFC 8141</span>, <time datetime="2017-04" class="refDate">April 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8141">https://www.rfc-editor.org/info/rfc8141</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8259">[RFC8259]</dt>
+        <dd>
+<span class="refAuthor">Bray, T., Ed.</span>, <span class="refTitle">"The JavaScript Object Notation (JSON) Data Interchange Format"</span>, <span class="seriesInfo">STD 90</span>, <span class="seriesInfo">RFC 8259</span>, <time datetime="2017-12" class="refDate">December 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8259">https://www.rfc-editor.org/info/rfc8259</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+      <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-9.2">
+        <h3 id="name-informative-references">
+<a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="C2PA">[C2PA]</dt>
+        <dd>
+<span class="refAuthor">Coalition for Content Provenance and Authenticity</span>, <span class="refTitle">"C2PA Content Credentials Specification, Version 1.3"</span>, <time datetime="2024" class="refDate">2024</time>, <span>&lt;<a href="https://c2pa.org/specifications/specifications/1.3/specs/C2PA_Specification.html">https://c2pa.org/specifications/specifications/1.3/specs/C2PA_Specification.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9162">[RFC9162]</dt>
+        <dd>
+<span class="refAuthor">Laurie, B.</span>, <span class="refAuthor">Messeri, E.</span>, and <span class="refAuthor">R. Stradling</span>, <span class="refTitle">"Certificate Transparency Version 2.0"</span>, <span class="seriesInfo">RFC 9162</span>, <time datetime="2021-12" class="refDate">December 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9162">https://www.rfc-editor.org/info/rfc9162</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="SIGSTORE">[SIGSTORE]</dt>
+      <dd>
+<span class="refAuthor">The Linux Foundation</span>, <span class="refTitle">"Sigstore: Software signing for everyone"</span>, <time datetime="2021" class="refDate">2021</time>, <span>&lt;<a href="https://www.sigstore.dev/">https://www.sigstore.dev/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="reference-implementation">
+<section id="appendix-A">
+      <h2 id="name-reference-implementation">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-reference-implementation" class="section-name selfRef">Reference Implementation</a>
+      </h2>
+<p id="appendix-A-1">
+        A reference implementation in Python and TypeScript, including
+        a public sealing service, an in-browser verifier, and a set of
+        normative test vectors, is available at
+        <span><a href="https://croviatrust.com/registry/seal/">https://croviatrust.com/registry/seal/</a></span>.
+        Test vectors are linked from
+        <span><a href="https://croviatrust.com/registry/seal/spec/">https://croviatrust.com/registry/seal/spec/</a></span>.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="changelog">
+<section id="appendix-B">
+      <h2 id="name-changelog">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-changelog" class="section-name selfRef">Changelog</a>
+      </h2>
+<p id="appendix-B-1"><strong>draft-crovia-seal-01</strong> (May 2026):<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B-2.1">Editorial: replaced 6 Unicode arrow characters (U+2192)
+            with ASCII <code>-&gt;</code> so the rendered text file is
+            strictly ASCII-clean (0 idnits warnings).  No normative
+            changes.<a href="#appendix-B-2.1" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="appendix-B-3"><strong>draft-crovia-seal-00</strong> (May 2026):<a href="#appendix-B-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B-4.1">Initial submission.  Aligned with Crovia Seal Specification
+            v0.5 of April 2026.<a href="#appendix-B-4.1" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="acknowledgements">
+<section id="appendix-C">
+      <h2 id="name-acknowledgements">
+<a href="#name-acknowledgements" class="section-name selfRef">Acknowledgements</a>
+      </h2>
+<p id="appendix-C-1">
+        The Crovia Seal has been informed by extensive prior work in
+        cryptographic transparency
+        (<span>[<a href="#RFC9162" class="cite xref">RFC9162</a>]</span>, <span>[<a href="#SIGSTORE" class="cite xref">SIGSTORE</a>]</span>) and
+        media-provenance attestation
+        (<span>[<a href="#C2PA" class="cite xref">C2PA</a>]</span>).  The authors thank the broader
+        community working on AI provenance and tamper-evidence for the
+        intellectual foundations on which this work rests.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-D">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Tarik En Nakhai</span></div>
+<div dir="auto" class="left"><span class="org">Crovia Trust</span></div>
+<div dir="auto" class="left"><span class="country-name">Italy</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:info@croviatrust.com" class="email">info@croviatrust.com</a>
+</div>
+<div class="url">
+<span>URI:</span>
+<a href="https://croviatrust.com" class="url">https://croviatrust.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

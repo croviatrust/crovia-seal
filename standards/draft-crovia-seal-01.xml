@@ -1,0 +1,927 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     ipr="trust200902"
+     docName="draft-crovia-seal-01"
+     category="info"
+     submissionType="independent"
+     tocInclude="true"
+     tocDepth="3"
+     symRefs="true"
+     sortRefs="true"
+     version="3">
+
+  <front>
+    <title abbrev="Crovia Seal v1">
+      The Crovia Seal: A Cryptographic Receipt Format for AI-Generated Output Provenance
+    </title>
+    <seriesInfo name="Internet-Draft" value="draft-crovia-seal-01"/>
+    <author fullname="Tarik En Nakhai" surname="En Nakhai" initials="T.">
+      <organization>Crovia Trust</organization>
+      <address>
+        <postal>
+          <street/>
+          <country>IT</country>
+        </postal>
+        <email>info@croviatrust.com</email>
+        <uri>https://croviatrust.com</uri>
+      </address>
+    </author>
+    <date year="2026" month="May"/>
+    <area>Applications and Real-Time</area>
+    <workgroup>Independent Submission</workgroup>
+    <keyword>provenance</keyword>
+    <keyword>AI</keyword>
+    <keyword>signature</keyword>
+    <keyword>JSON</keyword>
+    <keyword>canonicalization</keyword>
+    <keyword>transparency-log</keyword>
+
+    <abstract>
+      <t>
+        This document specifies the Crovia Seal v1, a compact, tamper-evident
+        JSON receipt that may be attached to any output produced by an AI
+        generator (large language model, image model, audio model, or
+        composite system) to record its provenance in a cryptographically
+        verifiable form.  A Crovia Seal binds an issuer's identity to the
+        SHA-256 digests of an input/output pair, the identity and parameters
+        of the generator, an emission timestamp, and a per-issuer hash
+        chain, under an Ed25519 signature computed over a strict
+        canonicalization (CSC-1) of the receipt with explicit domain
+        separation.  Optional fields permit transparency-log inclusion
+        proofs and witness co-signatures.  The Seal is designed for offline
+        verification and for inclusion in third-party transparency logs and
+        standards-based revocation infrastructure.
+      </t>
+    </abstract>
+
+    <note title="Status of This Memo">
+      <t>
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.
+      </t>
+      <t>
+        Internet-Drafts are working documents of the Internet Engineering
+        Task Force (IETF). Note that other groups may also distribute
+        working documents as Internet-Drafts. The list of current
+        Internet-Drafts is at
+        <eref target="https://datatracker.ietf.org/drafts/current/"/>.
+      </t>
+      <t>
+        Internet-Drafts are draft documents valid for a maximum of six
+        months and may be updated, replaced, or obsoleted by other
+        documents at any time.  It is inappropriate to use Internet-Drafts
+        as reference material or to cite them other than as "work in
+        progress".
+      </t>
+      <t>
+        This Internet-Draft will expire on 5 November 2026.
+      </t>
+    </note>
+  </front>
+
+  <middle>
+
+    <section anchor="introduction">
+      <name>Introduction</name>
+
+      <t>
+        Outputs produced by automated generative systems (large language
+        models, diffusion image models, speech-synthesis pipelines, or
+        composite agents) are difficult to attribute reliably after they
+        leave the generating system.  Today, an output may be quoted,
+        edited, copy-pasted, ingested into a search index, surfaced in a
+        court filing, or attributed to the wrong vendor with no available
+        chain of custody.  Both vendors and downstream consumers have an
+        operational interest in an attestation that fixes, at the moment
+        of generation, the bytes that were produced and the parameters
+        under which they were produced.
+      </t>
+
+      <t>
+        This document specifies a single such attestation: the
+        <strong>Crovia Seal</strong>.  A Seal is a JSON object whose bytes
+        are signed by an issuer's Ed25519 private key after a deterministic
+        canonicalization (Section 3) and with explicit cryptographic
+        domain separation (Section 3.3).  A Seal carries the SHA-256
+        digest of the input that was provided to the generator, the
+        SHA-256 digest of the output, the generator identity and
+        generation parameters, an issuance timestamp, and a per-issuer
+        append-only hash chain.  Optional fields carry inclusion proofs
+        from public transparency logs and additional co-signatures
+        ("witnesses").
+      </t>
+
+      <t>
+        A Seal does <strong>not</strong> attest to the truthfulness,
+        lawfulness, originality, or safety of the output.  It is a
+        receipt, not a verdict.  This deliberate narrowness is essential
+        to the protocol's value: the Seal can be re-verified by any party
+        possessing only the Seal, the issuer's public key, and the
+        original output bytes, without dependence on any judgement that
+        cannot be cryptographically checked.
+      </t>
+
+      <section anchor="conventions">
+        <name>Conventions and Terminology</name>
+        <t>
+          The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>",
+          "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>",
+          "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>",
+          "<bcp14>SHOULD NOT</bcp14>", "<bcp14>RECOMMENDED</bcp14>",
+          "<bcp14>NOT RECOMMENDED</bcp14>", "<bcp14>MAY</bcp14>", and
+          "<bcp14>OPTIONAL</bcp14>" in this document are to be
+          interpreted as described in BCP 14 <xref target="RFC2119"/>
+          <xref target="RFC8174"/> when, and only when, they appear in
+          all capitals, as shown here.
+        </t>
+        <t>
+          The following terms are used throughout this document:
+        </t>
+        <dl>
+          <dt>Seal:</dt>
+          <dd>a single JSON object conforming to <xref target="seal-structure"/>.</dd>
+          <dt>Issuer:</dt>
+          <dd>the entity producing and signing Seals; identified by its
+              long-term Ed25519 public key.</dd>
+          <dt>Witness:</dt>
+          <dd>an optional co-signer of a Seal (<xref target="witnesses"/>).</dd>
+          <dt>Subject:</dt>
+          <dd>the input/output pair that the Seal describes.</dd>
+          <dt>Generator:</dt>
+          <dd>the AI model or system that produced the output.</dd>
+          <dt>Chain:</dt>
+          <dd>the per-issuer append-only sequence of Seals
+              (<xref target="chain"/>).</dd>
+          <dt>Anchor:</dt>
+          <dd>an optional proof that the Seal was included in a public
+              transparency log (<xref target="transparency-log"/>).</dd>
+          <dt>CSC-1:</dt>
+          <dd>Crovia Seal Canonicalization v1
+              (<xref target="canonicalization"/>).</dd>
+          <dt>Payload:</dt>
+          <dd>the exact byte sequence over which a signature is computed
+              (<xref target="signing-payload"/>).</dd>
+        </dl>
+      </section>
+
+      <section anchor="design-principles">
+        <name>Design Principles</name>
+        <ul>
+          <li>
+            <strong>Record, do not judge.</strong> The Seal MUST NOT
+            encode verdicts on lawfulness, harm, or quality.  It MAY
+            embed analytical signals with explicit confidence.
+          </li>
+          <li>
+            <strong>Verify offline.</strong> The core verification path
+            MUST require no network access.
+          </li>
+          <li>
+            <strong>Composable.</strong> The schema MUST permit optional
+            extensions (co-signatures, post-quantum signatures,
+            transparency anchors) without breaking base verifiers.
+          </li>
+          <li>
+            <strong>Canonical.</strong> The exact bytes that are signed
+            MUST be derivable from the Seal by a single, fully specified
+            canonicalization algorithm.
+          </li>
+          <li>
+            <strong>Defensive by default.</strong> All cryptographic
+            operations MUST use domain separation; no signed payload may
+            be replayed in another protocol.
+          </li>
+          <li>
+            <strong>Fail closed.</strong> Any unrecognized field or
+            algorithm MUST cause verification to fail unless the verifier
+            explicitly opts into permissive mode.
+          </li>
+        </ul>
+      </section>
+
+      <section anchor="out-of-scope">
+        <name>Out of Scope</name>
+        <t>
+          The following are explicitly out of scope for this
+          specification.  An attestation that silently included any of
+          them would be misunderstood by users:
+        </t>
+        <ul>
+          <li>Detection of AI-generated content from the output alone
+              (no watermarking).</li>
+          <li>Judgements about copyright, fairness, accuracy, or safety
+              of the output.</li>
+          <li>Revocation: a Seal, once emitted, is an immutable
+              historical record.  Issuers are identified by public key;
+              key rotation is handled by the transparency log, not by
+              Seal-level revocation.</li>
+          <li>Authentication of the human user that requested the
+              generation.  The Seal binds bytes, not personhoods.</li>
+          <li>Confidentiality.  Seals are over plaintext.</li>
+        </ul>
+      </section>
+    </section>
+
+    <section anchor="canonicalization">
+      <name>Canonicalization (CSC-1)</name>
+
+      <section>
+        <name>Motivation</name>
+        <t>
+          JSON <xref target="RFC8259"/> is syntactically flexible:
+          whitespace, key ordering, number formatting, and string-escape
+          choices can vary while producing the same logical value.  A
+          signature over a JSON text requires an unambiguous
+          serialization.
+        </t>
+        <t>
+          CSC-1 is a strict subset of the JSON Canonicalization Scheme
+          (JCS) <xref target="RFC8785"/>.  It adopts the deterministic
+          ordering and escaping rules of JCS but forbids floating-point
+          numbers in signed payloads, sidestepping the edge cases of
+          ECMA-262 number serialization.  This restriction does not
+          constrain use cases: continuous parameters such as
+          <tt>temperature</tt> MUST be encoded as strings when carried
+          inside the signed payload (<xref target="generator-field"/>).
+        </t>
+      </section>
+
+      <section anchor="csc-rules">
+        <name>Rules</name>
+        <t>
+          A CSC-1-serialized JSON value is a UTF-8 byte sequence
+          produced as follows:
+        </t>
+        <ol>
+          <li><tt>null</tt> -&gt; <tt>null</tt></li>
+          <li><tt>true</tt> / <tt>false</tt> -&gt; <tt>true</tt> / <tt>false</tt></li>
+          <li>
+            integers (JSON number with no fractional part, within
+            [-(2^53 - 1), 2^53 - 1]) -&gt; shortest decimal
+            representation, no leading zeros, no <tt>+</tt> sign.
+          </li>
+          <li>
+            strings -&gt; UTF-8 JSON string literal using only the
+            escapes required by <xref target="RFC8259"/>:
+            <tt>\"</tt>, <tt>\\</tt>, <tt>\b</tt>, <tt>\f</tt>,
+            <tt>\n</tt>, <tt>\r</tt>, <tt>\t</tt>, and
+            <tt>\u00XX</tt> for U+0000..U+001F.  All other code points
+            MUST be emitted literally.
+          </li>
+          <li>
+            arrays -&gt; <tt>[</tt> followed by canonicalized elements
+            separated by <tt>,</tt> followed by <tt>]</tt>.  No interior
+            whitespace.
+          </li>
+          <li>
+            objects -&gt; <tt>{</tt> followed by <tt>"key":value</tt>
+            pairs separated by <tt>,</tt> followed by <tt>}</tt>.  Keys
+            MUST be sorted ascending by their UTF-16 code-unit sequence
+            (equivalent to JavaScript
+            <tt>Array.prototype.sort</tt> on strings).  No interior
+            whitespace.
+          </li>
+          <li>
+            floats, NaN, Infinity, and <tt>-0</tt> MUST cause
+            serialization to fail with <tt>NonCanonicalNumber</tt>.
+          </li>
+          <li>
+            duplicate object keys MUST cause serialization to fail with
+            <tt>DuplicateKey</tt>.
+          </li>
+          <li>
+            non-string object keys MUST cause serialization to fail with
+            <tt>NonStringKey</tt>.
+          </li>
+        </ol>
+      </section>
+
+      <section anchor="signing-payload">
+        <name>Signing Payload</name>
+        <t>
+          Given a Seal <em>S</em>, the signing payload <em>P(S)</em> is
+          computed as:
+        </t>
+        <artwork name="signing-payload" align="left"><![CDATA[
+P(S) = DOMAIN || 0x0A || CSC1(S \ {signature, witnesses})
+]]></artwork>
+        <t>where:</t>
+        <ul>
+          <li><tt>DOMAIN</tt> is the ASCII string <tt>"CROVIA-SEAL-v1"</tt> (14 bytes).</li>
+          <li><tt>0x0A</tt> is a single newline byte, acting as an unambiguous separator.</li>
+          <li>
+            <tt>S \ {signature, witnesses}</tt> denotes the Seal with
+            the <tt>signature</tt> and <tt>witnesses</tt> top-level
+            fields removed (they are computed over the payload, not part
+            of it).
+          </li>
+          <li><tt>CSC1(...)</tt> is the UTF-8 serialization per <xref target="csc-rules"/>.</li>
+        </ul>
+        <t>
+          The <tt>DOMAIN</tt> prefix ensures that a signature over
+          <em>P(S)</em> cannot be replayed as a valid signature in any
+          other protocol that does not use the same prefix.
+          Implementations MUST NOT omit the prefix.  Verifiers MUST
+          reject any Seal whose signature was produced without the
+          prefix.
+        </t>
+      </section>
+    </section>
+
+    <section anchor="seal-structure">
+      <name>Seal Structure</name>
+
+      <section>
+        <name>Top-Level Fields</name>
+        <t>
+          A conformant Seal is a JSON object with exactly the top-level
+          fields listed below.  Unknown top-level fields MUST cause
+          verification to fail (the "fail closed" principle).
+        </t>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Type</th><th>Section</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><tt>seal_version</tt></td><td>MUST</td><td>string</td><td>4.2</td></tr>
+            <tr><td><tt>seal_id</tt></td>     <td>MUST</td><td>string</td><td>4.3</td></tr>
+            <tr><td><tt>issuer</tt></td>      <td>MUST</td><td>object</td><td>4.4</td></tr>
+            <tr><td><tt>subject</tt></td>     <td>MUST</td><td>object</td><td>4.5</td></tr>
+            <tr><td><tt>generator</tt></td>   <td>MUST</td><td>object</td><td>4.6</td></tr>
+            <tr><td><tt>timestamp</tt></td>   <td>MUST</td><td>object</td><td>4.7</td></tr>
+            <tr><td><tt>chain</tt></td>       <td>MUST</td><td>object</td><td>4.8</td></tr>
+            <tr><td><tt>checks</tt></td>      <td>OPTIONAL</td><td>object</td><td>4.9</td></tr>
+            <tr><td><tt>anchor</tt></td>      <td>OPTIONAL</td><td>object</td><td>4.10</td></tr>
+            <tr><td><tt>signature</tt></td>   <td>MUST</td><td>object</td><td>4.11</td></tr>
+            <tr><td><tt>witnesses</tt></td>   <td>OPTIONAL</td><td>array</td><td>6</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <name>seal_version</name>
+        <t>
+          The literal string <tt>"crovia.seal.v1"</tt>.  Any other
+          value MUST cause verification to fail.
+        </t>
+      </section>
+
+      <section>
+        <name>seal_id</name>
+        <t>
+          A string matching the regular expression
+          <tt>^cs_[0-9]{4}_[A-Z2-7]{26}$</tt>: prefix <tt>cs_</tt>,
+          4-digit issuance year, underscore, 26 RFC 4648 base32
+          characters <xref target="RFC4648"/> (alphabet A-Z, 2-7, no
+          padding) encoding 16 random bytes (128 bits).  The random
+          bytes MUST be produced by a cryptographically secure source.
+        </t>
+      </section>
+
+      <section>
+        <name>issuer</name>
+        <artwork align="left"><![CDATA[
+{
+  "id":     string,           ; urn:crovia:seal-issuer:<name>
+  "pubkey": { "alg": "ed25519", "key_hex": string }
+}
+]]></artwork>
+        <t>
+          <tt>key_hex</tt> is 64 lowercase hexadecimal characters (32
+          raw bytes, Ed25519 public key per <xref target="RFC8032"/>).
+          Other algorithms are reserved for
+          <xref target="algorithm-agility"/>.
+        </t>
+      </section>
+
+      <section>
+        <name>subject</name>
+        <artwork align="left"><![CDATA[
+{
+  "input_hash":  "sha256:" + 64 lowercase hex chars,
+  "output_hash": "sha256:" + 64 lowercase hex chars,
+  "input_len":   integer,    ; byte length of input
+  "output_len":  integer,    ; byte length of output
+  "modality":    string      ; one of: text/code/image/audio/multimodal
+}
+]]></artwork>
+        <t>
+          The Seal does NOT carry the content itself.  The hashes commit
+          to the content; verifiers who possess the content can re-hash
+          and compare.
+        </t>
+      </section>
+
+      <section anchor="generator-field">
+        <name>generator</name>
+        <artwork align="left"><![CDATA[
+{
+  "id":           string,          ; e.g. "openai/gpt-4o"
+  "version":      string | null,   ; e.g. "2024-08-06"
+  "weights_hash": string | null,   ; if available
+  "params":       object           ; key -> string map of gen-params
+}
+]]></artwork>
+        <t>
+          All parameter values MUST be strings in the signed payload (per
+          the floating-point restriction in
+          <xref target="canonicalization"/>).  Numeric values like
+          <tt>temperature=0.7</tt> MUST be encoded as
+          <tt>"0.7"</tt>.
+        </t>
+      </section>
+
+      <section>
+        <name>timestamp</name>
+        <artwork align="left"><![CDATA[
+{
+  "emitted_at": string,   ; RFC 3339 UTC, ms precision
+                          ; e.g. "2026-04-15T12:34:56.789Z"
+  "nonce":      string    ; 26 RFC 4648 base32 chars (16 random bytes)
+}
+]]></artwork>
+        <t>
+          <tt>emitted_at</tt> follows <xref target="RFC3339"/>.
+          Issuers MUST use UTC.  The <tt>nonce</tt> guarantees that two
+          Seals issued in the same millisecond are still distinct under
+          <tt>P(S)</tt>.
+        </t>
+      </section>
+
+      <section anchor="chain">
+        <name>chain</name>
+        <artwork align="left"><![CDATA[
+{
+  "prev_seal_hash": "sha256:" + 64 hex chars | null,
+  "sequence":       integer (>= 0)
+}
+]]></artwork>
+        <t>
+          <tt>prev_seal_hash</tt> is the SHA-256 over the canonical
+          payload <em>P(S_prev)</em> of the immediately preceding Seal
+          from the same issuer, or <tt>null</tt> for the genesis Seal
+          (<tt>sequence == 0</tt>).  Verifiers that track issuer chains
+          MUST detect:
+        </t>
+        <ul>
+          <li>
+            <strong>Fork</strong>: two Seals with the same issuer key
+            and same <tt>chain.sequence</tt> but different
+            <tt>prev_seal_hash</tt>.  This is non-repudiable evidence of
+            issuer misbehavior or key compromise.
+          </li>
+          <li>
+            <strong>Gap</strong>: missing sequence numbers.  A verifier
+            with partial history SHOULD obtain the missing Seals from
+            the transparency log before accepting.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <name>checks (OPTIONAL)</name>
+        <t>
+          Free-form object carrying analytical claims such as
+          memorization checks, safety probes, toxicity scores.  The
+          schema for specific check types is defined in separate check
+          specifications; the Seal itself imposes no constraints on the
+          content beyond CSC-1 compatibility.
+        </t>
+        <t>Example:</t>
+        <artwork align="left"><![CDATA[
+{
+  "memorization": {
+    "db_version": "crovia-memdb-2026-04-15",
+    "method":     "ngram-lsh-v1",
+    "matches":    0,
+    "max_conf":   "0.03"
+  }
+}
+]]></artwork>
+        <t>
+          Each check produced by an issuer is signed along with the rest
+          of the Seal; its validity as evidence depends on the method's
+          own robustness, which is out of scope for this specification.
+        </t>
+      </section>
+
+      <section>
+        <name>anchor (OPTIONAL)</name>
+        <artwork align="left"><![CDATA[
+{
+  "log_url":        string,
+  "merkle_root":    "sha256:" + 64 hex chars,
+  "merkle_proof":   [ "sha256:" + hex, ... ],
+  "log_index":      integer (>= 0),
+  "root_signed_at": string (RFC 3339 UTC)
+}
+]]></artwork>
+        <t>
+          The anchor commits the Seal to a public transparency log.
+          The log operator's signature over <tt>merkle_root</tt> is not
+          part of this Seal and MUST be fetched separately from
+          <tt>log_url</tt>.
+        </t>
+      </section>
+
+      <section>
+        <name>signature</name>
+        <artwork align="left"><![CDATA[
+{
+  "alg":              "ed25519",
+  "canon":            "csc-1",
+  "domain":           "CROVIA-SEAL-v1",
+  "payload_hash_alg": "sha256",
+  "sig_hex":          string     ; 128 hex chars (64 raw bytes)
+}
+]]></artwork>
+        <t>
+          The signature is computed as
+          <tt>Ed25519_sign(privkey, P(S))</tt> where <em>P(S)</em> is
+          defined in <xref target="signing-payload"/>.  Implementations
+          MUST NOT hash the payload before signing; Ed25519 internally
+          handles the hash (SHA-512).  The <tt>payload_hash_alg</tt>
+          field is informational, indicating the algorithm used to
+          derive <tt>prev_seal_hash</tt> and other SHA-256 digests in
+          the Seal.
+        </t>
+      </section>
+
+    </section>
+
+    <section anchor="witnesses">
+      <name>Witnesses (OPTIONAL)</name>
+      <artwork align="left"><![CDATA[
+"witnesses": [
+  {
+    "id":      string,
+    "pubkey":  { "alg": "ed25519", "key_hex": string },
+    "sig_hex": string
+  },
+  ...
+]
+]]></artwork>
+      <t>
+        A witness signs the same canonical payload <em>P(S)</em> as the
+        issuer.  Witness signatures are OPTIONAL and additive: a Seal
+        with no witnesses is valid; a Seal with invalid witness
+        signatures is invalid overall (fail-closed).
+      </t>
+      <t>
+        Typical witnesses: consortium co-signers (civil-society
+        organizations, academic institutions, regulatory observers).
+        Witnesses endorse the Seal without endorsing its content.
+      </t>
+    </section>
+
+    <section anchor="transparency-log">
+      <name>Transparency Log (Informative)</name>
+      <t>
+        A conformant transparency log accepts Seals and periodically
+        publishes a signed Merkle root over the Seals it has received.
+        The log API design is outside the scope of this document; an
+        implementation profile compatible with
+        <xref target="RFC9162"/>-style logs is anticipated in a
+        companion document.
+      </t>
+    </section>
+
+    <section anchor="algorithm-agility">
+      <name>Algorithm Agility (Post-Quantum)</name>
+      <t>
+        Future versions of this specification MAY permit alternative
+        signature algorithms (e.g., Dilithium, Falcon) by extending the
+        <tt>signature.alg</tt> vocabulary.  A Seal MAY additionally
+        carry a <tt>pq_signature</tt> top-level field with an
+        independent post-quantum signature over the same payload
+        <em>P(S)</em>.  Verifiers that support only Ed25519 MUST ignore
+        <tt>pq_signature</tt> and rely on <tt>signature</tt>.
+        Verifiers MAY require both signatures to validate (strict mode).
+      </t>
+    </section>
+
+    <section anchor="security-considerations">
+      <name>Security Considerations</name>
+
+      <section>
+        <name>Replay Across Protocols</name>
+        <t>
+          Prevented by domain separation
+          (<xref target="signing-payload"/>).  A signature on
+          <em>P(S)</em> cannot be reinterpreted as a valid signature on
+          a payload of any other protocol that does not use the exact
+          same 14-byte <tt>CROVIA-SEAL-v1</tt> prefix followed by a
+          newline.
+        </t>
+      </section>
+
+      <section>
+        <name>Replay Within the Protocol</name>
+        <t>
+          A Seal is a historical record; "replay" of a Seal is a
+          semantic issue, not a cryptographic one.  The
+          <tt>seal_id</tt>, <tt>timestamp</tt>, and
+          <tt>chain.sequence</tt> fields make each Seal unique.
+          Verifiers that track seen seal IDs can detect duplication
+          attempts.
+        </t>
+      </section>
+
+      <section>
+        <name>JSON Malleability</name>
+        <t>
+          Eliminated by CSC-1
+          (<xref target="canonicalization"/>).  Any tool that reorders
+          keys, adds whitespace, or re-escapes strings produces a
+          different byte sequence and hence an invalid signature.
+        </t>
+      </section>
+
+      <section>
+        <name>Field Tampering</name>
+        <t>
+          The signature covers every field except <tt>signature</tt>
+          and <tt>witnesses</tt>, which are themselves cryptographic.
+          Adding, modifying, or deleting any field invalidates the
+          signature.
+        </t>
+      </section>
+
+      <section>
+        <name>Key Compromise</name>
+        <t>
+          If an issuer key is compromised, the attacker can issue valid
+          Seals until the compromise is detected and the key is revoked
+          in the transparency log's trust root.  The issuer hash chain
+          MAY reveal the compromise if the attacker issues a forking
+          Seal.
+        </t>
+      </section>
+
+      <section>
+        <name>Downgrade</name>
+        <t>
+          <tt>seal_version</tt>, <tt>signature.alg</tt>,
+          <tt>signature.canon</tt>, and <tt>signature.domain</tt> are
+          all inside the signed payload.  An attacker cannot negotiate
+          a weaker algorithm without producing a wholly new signature.
+        </t>
+      </section>
+
+      <section>
+        <name>Canonicalization Ambiguity</name>
+        <t>
+          CSC-1 forbids floats in the signed payload precisely to avoid
+          the numeric edge cases of JCS.  Strings carrying numeric
+          values MUST use a documented format
+          (see <xref target="generator-field"/>).
+        </t>
+      </section>
+
+      <section>
+        <name>Hash Choice</name>
+        <t>
+          SHA-256 is used for all digests (content commitments, chain
+          links).  Migration to SHA-3 or BLAKE3 is anticipated in a
+          future minor version; the <tt>payload_hash_alg</tt> field
+          signals the choice.
+        </t>
+      </section>
+
+      <section>
+        <name>Randomness</name>
+        <t>
+          All random values (<tt>seal_id</tt> suffix,
+          <tt>timestamp.nonce</tt>) MUST be produced by a
+          cryptographically secure source (e.g.,
+          <tt>os.urandom</tt>, the <tt>secrets</tt> module in Python,
+          <tt>crypto.randomBytes</tt> in Node.js).
+        </t>
+      </section>
+
+      <section>
+        <name>Content Privacy</name>
+        <t>
+          The Seal commits to input/output hashes, never content.
+          Content-bearing fields such as <tt>generator.params</tt> are
+          in the clear; issuers MUST NOT place sensitive user data in
+          these fields.
+        </t>
+      </section>
+    </section>
+
+    <section anchor="iana-considerations">
+      <name>IANA Considerations</name>
+
+      <section>
+        <name>Media Type Registration</name>
+        <t>
+          IANA is requested to register the following media type per
+          <xref target="RFC6838"/>:
+        </t>
+        <dl>
+          <dt>Type name:</dt>           <dd>application</dd>
+          <dt>Subtype name:</dt>        <dd>vnd.crovia.seal+json</dd>
+          <dt>Required parameters:</dt> <dd>none</dd>
+          <dt>Optional parameters:</dt> <dd>none</dd>
+          <dt>Encoding:</dt>            <dd>UTF-8 (per <xref target="RFC8259"/>)</dd>
+          <dt>Security considerations:</dt> <dd>see <xref target="security-considerations"/></dd>
+          <dt>Interoperability:</dt>    <dd>see this document</dd>
+          <dt>Published specification:</dt> <dd>this document</dd>
+          <dt>Applications using this type:</dt>
+          <dd>provenance attestation systems for AI-generated content</dd>
+          <dt>Author/Change controller:</dt> <dd>CROVIA Research</dd>
+        </dl>
+      </section>
+
+      <section>
+        <name>URN Sub-Namespace Registration</name>
+        <t>
+          IANA is requested to register the URN namespace
+          <tt>urn:crovia:seal-issuer:</tt> per <xref target="RFC8141"/>
+          for the identification of Crovia Seal issuers by stable URN.
+          The complete formal namespace registration template will be
+          provided in a companion document.
+        </t>
+      </section>
+    </section>
+
+  </middle>
+
+  <back>
+
+    <references>
+      <name>References</name>
+
+      <references>
+        <name>Normative References</name>
+
+        <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119">
+          <front>
+            <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+            <author initials="S." surname="Bradner"/>
+            <date year="1997" month="March"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="2119"/>
+          <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+        </reference>
+
+        <reference anchor="RFC3339" target="https://www.rfc-editor.org/info/rfc3339">
+          <front>
+            <title>Date and Time on the Internet: Timestamps</title>
+            <author initials="G." surname="Klyne"/>
+            <author initials="C." surname="Newman"/>
+            <date year="2002" month="July"/>
+          </front>
+          <seriesInfo name="RFC" value="3339"/>
+        </reference>
+
+        <reference anchor="RFC4648" target="https://www.rfc-editor.org/info/rfc4648">
+          <front>
+            <title>The Base16, Base32, and Base64 Data Encodings</title>
+            <author initials="S." surname="Josefsson"/>
+            <date year="2006" month="October"/>
+          </front>
+          <seriesInfo name="RFC" value="4648"/>
+        </reference>
+
+        <reference anchor="RFC6838" target="https://www.rfc-editor.org/info/rfc6838">
+          <front>
+            <title>Media Type Specifications and Registration Procedures</title>
+            <author initials="N." surname="Freed"/>
+            <author initials="J." surname="Klensin"/>
+            <author initials="T." surname="Hansen"/>
+            <date year="2013" month="January"/>
+          </front>
+          <seriesInfo name="BCP" value="13"/>
+          <seriesInfo name="RFC" value="6838"/>
+        </reference>
+
+        <reference anchor="RFC8032" target="https://www.rfc-editor.org/info/rfc8032">
+          <front>
+            <title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title>
+            <author initials="S." surname="Josefsson"/>
+            <author initials="I." surname="Liusvaara"/>
+            <date year="2017" month="January"/>
+          </front>
+          <seriesInfo name="RFC" value="8032"/>
+        </reference>
+
+        <reference anchor="RFC8141" target="https://www.rfc-editor.org/info/rfc8141">
+          <front>
+            <title>Uniform Resource Names (URNs)</title>
+            <author initials="P." surname="Saint-Andre"/>
+            <author initials="J." surname="Klensin"/>
+            <date year="2017" month="April"/>
+          </front>
+          <seriesInfo name="RFC" value="8141"/>
+        </reference>
+
+        <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174">
+          <front>
+            <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+            <author initials="B." surname="Leiba"/>
+            <date year="2017" month="May"/>
+          </front>
+          <seriesInfo name="BCP" value="14"/>
+          <seriesInfo name="RFC" value="8174"/>
+        </reference>
+
+        <reference anchor="RFC8259" target="https://www.rfc-editor.org/info/rfc8259">
+          <front>
+            <title>The JavaScript Object Notation (JSON) Data Interchange Format</title>
+            <author initials="T." surname="Bray" role="editor"/>
+            <date year="2017" month="December"/>
+          </front>
+          <seriesInfo name="STD" value="90"/>
+          <seriesInfo name="RFC" value="8259"/>
+        </reference>
+
+        <reference anchor="RFC8785" target="https://www.rfc-editor.org/info/rfc8785">
+          <front>
+            <title>JSON Canonicalization Scheme (JCS)</title>
+            <author initials="A." surname="Rundgren"/>
+            <author initials="B." surname="Jordan"/>
+            <author initials="S." surname="Erdtman"/>
+            <date year="2020" month="June"/>
+          </front>
+          <seriesInfo name="RFC" value="8785"/>
+        </reference>
+      </references>
+
+      <references>
+        <name>Informative References</name>
+
+        <reference anchor="RFC9162" target="https://www.rfc-editor.org/info/rfc9162">
+          <front>
+            <title>Certificate Transparency Version 2.0</title>
+            <author initials="B." surname="Laurie"/>
+            <author initials="E." surname="Messeri"/>
+            <author initials="R." surname="Stradling"/>
+            <date year="2021" month="December"/>
+          </front>
+          <seriesInfo name="RFC" value="9162"/>
+        </reference>
+
+        <reference anchor="C2PA" target="https://c2pa.org/specifications/specifications/1.3/specs/C2PA_Specification.html">
+          <front>
+            <title>C2PA Content Credentials Specification, Version 1.3</title>
+            <author><organization>Coalition for Content Provenance and Authenticity</organization></author>
+            <date year="2024"/>
+          </front>
+        </reference>
+
+        <reference anchor="SIGSTORE" target="https://www.sigstore.dev/">
+          <front>
+            <title>Sigstore: Software signing for everyone</title>
+            <author><organization>The Linux Foundation</organization></author>
+            <date year="2021"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+
+    <section anchor="reference-implementation">
+      <name>Reference Implementation</name>
+      <t>
+        A reference implementation in Python and TypeScript, including
+        a public sealing service, an in-browser verifier, and a set of
+        normative test vectors, is available at
+        <eref target="https://croviatrust.com/registry/seal/"/>.
+        Test vectors are linked from
+        <eref target="https://croviatrust.com/registry/seal/spec/"/>.
+      </t>
+    </section>
+
+    <section anchor="changelog">
+      <name>Changelog</name>
+      <t><strong>draft-crovia-seal-01</strong> (May 2026):</t>
+      <ul>
+        <li>Editorial: replaced 6 Unicode arrow characters (U+2192)
+            with ASCII <tt>-&gt;</tt> so the rendered text file is
+            strictly ASCII-clean (0 idnits warnings).  No normative
+            changes.</li>
+      </ul>
+      <t><strong>draft-crovia-seal-00</strong> (May 2026):</t>
+      <ul>
+        <li>Initial submission.  Aligned with Crovia Seal Specification
+            v0.5 of April 2026.</li>
+      </ul>
+    </section>
+
+    <section anchor="acknowledgements" numbered="false">
+      <name>Acknowledgements</name>
+      <t>
+        The Crovia Seal has been informed by extensive prior work in
+        cryptographic transparency
+        (<xref target="RFC9162"/>, <xref target="SIGSTORE"/>) and
+        media-provenance attestation
+        (<xref target="C2PA"/>).  The authors thank the broader
+        community working on AI provenance and tamper-evidence for the
+        intellectual foundations on which this work rests.
+      </t>
+    </section>
+
+  </back>
+</rfc>

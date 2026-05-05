@@ -1,0 +1,42 @@
+{
+  "seal_version": "crovia.seal.v1",
+  "seal_id": "cs_2026_GGGGGGGGGGGGGGGGGGGGGGGGGG",
+  "issuer": {
+    "id": "urn:crovia:seal-issuer:conformance",
+    "pubkey": {
+      "alg": "ed25519",
+      "key_hex": "ff57575dc7af8bfc4d0837cc1ce2017b686a88145dc5579a958e3462fe9a908e"
+    }
+  },
+  "subject": {
+    "input_hash": "sha256:c5e51c7949fc2b31278aa2b8fad4256ca8be97ac31fdb80c1a9a30e6ea1f5e2f",
+    "output_hash": "sha256:4673ad469af95a21a5f4bb35030318af1d0091471bf47a840f634c27a82577e5",
+    "input_len": 44,
+    "output_len": 263,
+    "modality": "audio"
+  },
+  "generator": {
+    "id": "elevenlabs/multilingual-v2",
+    "version": null,
+    "weights_hash": null,
+    "params": {
+      "voice_id": "Rachel",
+      "stability": "0.45"
+    }
+  },
+  "timestamp": {
+    "emitted_at": "2026-04-15T00:00:03.000Z",
+    "nonce": "HHHHHHHHHHHHHHHHHHHHHHHHHH"
+  },
+  "chain": {
+    "prev_seal_hash": "sha256:8ca0cafa3e6ab279d3b2cfcf9f0bbb47cdc92b1d5598d6fc92c3247119a9aae1",
+    "sequence": 3
+  },
+  "signature": {
+    "alg": "ed25519",
+    "canon": "csc-1",
+    "domain": "CROVIA-SEAL-v1",
+    "payload_hash_alg": "sha256",
+    "sig_hex": "74f2afe2a6ea1e8908918c47364c812b6875fcc8f2608115f8b7cc500ac724c4c99beb8d6f61ab2d731243296b9fdf1ce83cf69e98c2bd45fb2e6e9f04ff430b"
+  }
+}

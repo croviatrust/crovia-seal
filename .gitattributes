@@ -1,0 +1,39 @@
+# Enforce LF for ALL text files.
+#
+# Crovia Seal's conformance vectors are byte-identity tested.  The CI
+# workflow regenerates them and runs `git diff`; any CRLF/LF mismatch
+# would break the check.  Forcing LF is the only safe stance.
+* text=auto eol=lf
+
+# Binary files MUST NOT be touched
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.woff      binary
+*.woff2     binary
+
+# Conformance fixtures: explicitly LF, never modified
+conformance/vectors/**       text eol=lf
+*.payload.hex                text eol=lf
+*.signature.hex              text eol=lf
+*.public.hex                 text eol=lf
+*.private.hex                text eol=lf
+
+# IETF Internet-Drafts use LF by convention
+standards/*.xml              text eol=lf
+standards/*.txt              text eol=lf
+standards/*.html             text eol=lf
+
+# Python / TS / shell
+*.py                         text eol=lf
+*.ts                         text eol=lf
+*.tsx                        text eol=lf
+*.js                         text eol=lf
+*.sh                         text eol=lf
+*.yaml                       text eol=lf
+*.yml                        text eol=lf
+*.json                       text eol=lf
+*.md                         text eol=lf

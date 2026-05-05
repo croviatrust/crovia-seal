@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Crovia Seal</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <header>
+      <div class="logo">Crovia Seal</div>
+      <div class="version" id="version">v0.5.0</div>
+    </header>
+
+    <section class="identity">
+      <div class="label">Your issuer</div>
+      <div class="issuer-id" id="issuer-id">...</div>
+      <div class="pubkey mono" id="pubkey">...</div>
+      <div class="created" id="created"></div>
+      <button type="button" class="secondary" id="reset-identity">Reset identity</button>
+    </section>
+
+    <section class="stats">
+      <div><span id="count">0</span> seals emitted</div>
+      <a href="#" id="open-verify">Open universal verifier</a>
+    </section>
+
+    <section class="recent">
+      <div class="label">Recent seals</div>
+      <ul id="recent-list"></ul>
+    </section>
+
+    <footer>
+      <span class="dim">local keys, no server</span>
+    </footer>
+
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>

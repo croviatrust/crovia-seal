@@ -1,0 +1,39 @@
+{
+  "seal_version": "crovia.seal.v1",
+  "seal_id": "cs_2026_OOOOOOOOOOOOOOOOOOOOOOOOOO",
+  "issuer": {
+    "id": "urn:crovia:seal-issuer:conformance",
+    "pubkey": {
+      "alg": "ed25519",
+      "key_hex": "ff57575dc7af8bfc4d0837cc1ce2017b686a88145dc5579a958e3462fe9a908e"
+    }
+  },
+  "subject": {
+    "input_hash": "sha256:758d61f26a44448384e5c4468a0dcb7a2abe456067b0f7b505bc28b9411fe931",
+    "output_hash": "sha256:9795c5ff8937f23526ccb207a5684c1fc94a7854e19c021b39d944e51f5baef2",
+    "input_len": 4,
+    "output_len": 4,
+    "modality": "text"
+  },
+  "generator": {
+    "id": "local/echo-v1",
+    "version": null,
+    "weights_hash": null,
+    "params": {}
+  },
+  "timestamp": {
+    "emitted_at": "2026-04-15T00:00:07.000Z",
+    "nonce": "PPPPPPPPPPPPPPPPPPPPPPPPPP"
+  },
+  "chain": {
+    "prev_seal_hash": "sha256:8c6a1366c69ac76b83b59dbc2bb632809442102ac8778d2762063714a990d7b8",
+    "sequence": 7
+  },
+  "signature": {
+    "alg": "ed25519",
+    "canon": "csc-1",
+    "domain": "CROVIA-SEAL-v1",
+    "payload_hash_alg": "sha256",
+    "sig_hex": "2c931dfa556215b84eaba60f05bb0d9a636f36766ae8ef8d50125a7fda51a726a6084f4590b17e78baaca01030ddc48e05ac488022f262af0bb58ffc0a72cb02"
+  }
+}

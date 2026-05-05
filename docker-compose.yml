@@ -1,0 +1,64 @@
+# Full Crovia Seal stack: proxy + transparency log.
+#
+# Usage:
+#     docker compose up --build
+#
+# Exposes:
+#     :7878  -> Crovia Proxy       (OpenAI-compatible, seals every response)
+#     :7979  -> Crovia TLog        (RFC 6962 append-only Merkle log)
+#
+# The proxy will upstream to OpenAI by default. Override via the UPSTREAM env:
+#     UPSTREAM=http://ollama:11434 docker compose up
+#
+# Beacon anchoring is ON by default in this compose file: every seal will
+# carry a drand Quicknet round so emissions cannot be back-dated.
+
+version: "3.9"
+
+services:
+
+  crovia-tlog:
+    build:
+      context: .
+      dockerfile: integrations/tlog/Dockerfile
+    container_name: crovia-tlog
+    ports:
+      - "7979:7979"
+    volumes:
+      - crovia-tlog-data:/data
+    environment:
+      CROVIA_TLOG_LOG_ID: "urn:crovia:tlog:docker-compose"
+      CROVIA_TLOG_DB_PATH: "/data/tlog.db"
+      CROVIA_TLOG_LOG_KEY_FILE: "/data/log.key"
+      CROVIA_TLOG_HOST: "0.0.0.0"
+      CROVIA_TLOG_PORT: "7979"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7979/health', timeout=2).read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  crovia-proxy:
+    build:
+      context: .
+      dockerfile: integrations/proxy/Dockerfile
+    container_name: crovia-proxy
+    ports:
+      - "7878:7878"
+    volumes:
+      - crovia-proxy-data:/data
+    environment:
+      CROVIA_UPSTREAM_URL: "${UPSTREAM:-https://api.openai.com}"
+      CROVIA_ISSUER_ID: "${ISSUER_ID:-urn:crovia:seal-issuer:docker-compose}"
+      CROVIA_ISSUER_KEY_FILE: "/data/proxy.key"
+      CROVIA_LOG_FILE: "/data/audit.jsonl"
+      CROVIA_BEACON_ANCHOR: "true"
+      CROVIA_HOST: "0.0.0.0"
+      CROVIA_PORT: "7878"
+    depends_on:
+      crovia-tlog:
+        condition: service_healthy
+
+volumes:
+  crovia-proxy-data:
+  crovia-tlog-data:
