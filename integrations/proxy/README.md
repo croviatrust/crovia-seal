@@ -1,25 +1,32 @@
 # Crovia Proxy
 
-**OpenAI-compatible proxy that seals every response with a Crovia Seal v1 provenance receipt.**
+**Multi-vendor proxy that seals every AI response with a Crovia Seal v1 provenance receipt.**
 
-Drop-in: change one line in any OpenAI SDK setup and every AI response that passes through gains a cryptographic receipt, a tamper-evident chain, and a zero-width CIM mark embedded in the text itself.
+Drop-in: change one line in any OpenAI / Anthropic / Google Gemini / Cohere SDK setup and every AI response that passes through gains a cryptographic receipt, a tamper-evident chain, and a zero-width CIM mark embedded in the text itself.
 
 ---
 
 ## What it does
 
-1. Accepts an OpenAI-style `/v1/chat/completions` request (both streaming and non-streaming).
-2. Forwards it to the real upstream (OpenAI, Ollama, vLLM, Together, Groq, any OpenAI-compatible endpoint).
+1. Accepts a request in any of the four supported native shapes:
+   - **OpenAI**: `POST /v1/chat/completions` (streaming + non-streaming)
+   - **Anthropic**: `POST /v1/messages` (Messages API)
+   - **Google Gemini**: `POST /v1beta/models/{model}:generateContent`
+   - **Cohere**: `POST /v1/chat`
+2. Forwards it verbatim to the appropriate upstream (configurable per vendor).
 3. After the response arrives, it:
    - computes a Crovia Seal over the `(input_text, output_text)` pair, signed Ed25519 with the proxy's issuer key;
    - chains the seal to the previous one (append-only hash chain);
    - embeds a **Crovia Invisible Mark (CIM)** inside the response text so the seal id survives copy-paste;
-   - returns the response with:
-     - the full seal JSON inside `response.crovia.seal`
-     - `X-Crovia-Seal-Id` and `X-Crovia-Seal` HTTP headers
-     - a final SSE event `data: {"crovia": {...}}` for streaming
+   - injects the seal into the response in each vendor's idiomatic JSON shape:
+     - OpenAI / Anthropic: top-level `crovia` field (`snake_case` inner keys)
+     - Google Gemini: top-level `croviaSeal` field (`camelCase` inner keys, per Google convention)
+     - Cohere: top-level `crovia_seal` field (per Cohere convention)
+   - emits the same `X-Crovia-Seal-Id` / `X-Crovia-Seal` / `X-Crovia-Issuer-Pubkey` headers across all four routes.
 
-No data is ever sent to any Crovia server. The proxy is 100% local; only the upstream traffic (to OpenAI etc.) is the usual one.
+Streaming requests on the native vendor routes are forwarded **verbatim, unsealed**, with an `X-Crovia-Stream-Sealed: false` response header so callers know.  Sealed evidence requires non-streaming responses (the OpenAI route additionally seals streams via a synthetic final SSE event).
+
+No data is ever sent to any Crovia server. The proxy is 100% local; only the upstream traffic (to OpenAI / Anthropic / Google / Cohere) is the usual one.
 
 ---
 
@@ -67,7 +74,10 @@ print(json.dumps(resp.model_extra["crovia"]["seal"], indent=2))
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `CROVIA_UPSTREAM_URL` | `https://api.openai.com` | where to forward requests |
+| `CROVIA_UPSTREAM_URL` | `https://api.openai.com` | OpenAI-compatible upstream (`/v1/chat/completions`) |
+| `CROVIA_UPSTREAM_ANTHROPIC_URL` | `https://api.anthropic.com` | Anthropic upstream (`/v1/messages`) |
+| `CROVIA_UPSTREAM_GOOGLE_URL` | `https://generativelanguage.googleapis.com` | Google Gemini upstream |
+| `CROVIA_UPSTREAM_COHERE_URL` | `https://api.cohere.com` | Cohere upstream (`/v1/chat`) |
 | `CROVIA_ISSUER_ID` | `urn:crovia:seal-issuer:crovia-proxy-local` | URN of the signer |
 | `CROVIA_ISSUER_PRIVATE_HEX` | *(unset)* | 32-byte Ed25519 private hex; generated+persisted if missing |
 | `CROVIA_INJECT_CIM` | `true` | embed CIM in response text |
@@ -78,9 +88,69 @@ print(json.dumps(resp.model_extra["crovia"]["seal"], indent=2))
 
 ## Endpoints
 
-- `POST /v1/chat/completions` — the sealed hot path (streaming + non-streaming).
+Sealed paths (non-streaming responses are signed; streaming is pass-through):
+
+| Method | Path | Vendor | Seal field |
+|---|---|---|---|
+| `POST` | `/v1/chat/completions` | OpenAI-compatible | `response.crovia.seal` |
+| `POST` | `/v1/messages` | Anthropic | `response.crovia.seal` |
+| `POST` | `/v1beta/models/{model}:generateContent` | Google Gemini | `response.croviaSeal.seal` |
+| `POST` | `/v1/chat` | Cohere | `response.crovia_seal.seal` |
+
+Discovery / health:
+
 - `GET /health` — liveness + identity.
 - `GET /.well-known/crovia-issuer.json` — public issuer manifest for verifiers.
+
+## SDK examples for the native routes
+
+### Anthropic
+
+```python
+import anthropic
+client = anthropic.Anthropic(
+    base_url="http://localhost:7878",
+    api_key="sk-ant-...",
+)
+resp = client.messages.create(
+    model="claude-3-5-sonnet-20241022",
+    max_tokens=128,
+    messages=[{"role": "user", "content": "Write a haiku about proofs."}],
+)
+print(resp.content[0].text)
+# Seal lives in the raw JSON: resp.model_dump()["crovia"]["seal"]
+```
+
+### Google Gemini (REST)
+
+```python
+import httpx
+r = httpx.post(
+    "http://localhost:7878/v1beta/models/gemini-1.5-pro:generateContent",
+    headers={"x-goog-api-key": "AIza..."},
+    json={"contents": [{"role": "user",
+                        "parts": [{"text": "Capital of France?"}]}]},
+)
+body = r.json()
+print(body["candidates"][0]["content"]["parts"][0]["text"])
+print(body["croviaSeal"]["seal"])
+```
+
+### Cohere
+
+```python
+import cohere
+client = cohere.Client(
+    base_url="http://localhost:7878",
+    api_key="...",
+)
+resp = client.chat(
+    model="command-r-plus",
+    message="Capital of France?",
+)
+print(resp.text)
+# raw seal in the underlying JSON: resp.model_dump()["crovia_seal"]["seal"]
+```
 
 ## Test
 

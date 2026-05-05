@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from crovia_proxy.config import Settings
 from crovia_proxy.sealer import Sealer, SealedResponse
+from crovia_proxy.vendors import AnthropicAdapter, GoogleAdapter, CohereAdapter
 
 
 CROVIA_SEAL_HEADER = "X-Crovia-Seal"
@@ -390,4 +391,153 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
         return JSONResponse(content=resp_json, status_code=up_resp.status_code, headers=headers)
 
+    # -------------------------------------------------------------
+    # Generic native-vendor handler.  See crovia_proxy/vendors.py.
+    # -------------------------------------------------------------
+
+    async def _handle_native_vendor(
+        request: Request,
+        adapter,
+        upstream_url: str,
+    ) -> Response:
+        """Forward a non-streaming request to a native vendor upstream and inject
+        a Crovia Seal in the vendor-native response shape.
+
+        Streaming is NOT supported by this handler (each vendor uses a different
+        SSE/NDJSON dialect).  Streaming clients will receive the upstream stream
+        verbatim with no seal — this is intentional fail-open for streaming, and
+        callers who want sealed evidence must request non-streaming responses.
+        """
+        raw_body = await request.body()
+        try:
+            body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return JSONResponse(
+                status_code=400,
+                content={"error": {"message": "invalid JSON body", "type": "crovia_proxy"}},
+            )
+
+        # Detect streaming.  Different vendors signal it differently:
+        #   Anthropic: body["stream"] == true
+        #   Google:    URL contains ":streamGenerateContent" (handled in route)
+        #   Cohere:    body["stream"] == true
+        is_stream = bool(body.get("stream", False))
+        if is_stream:
+            # Pass-through, no sealing.
+            up_headers = _forwardable_headers(request)
+            client: httpx.AsyncClient = app.state.http_client
+            try:
+                up_resp = await client.post(upstream_url, headers=up_headers, content=raw_body)
+            except httpx.RequestError as e:
+                return JSONResponse(
+                    status_code=502,
+                    content={"error": {"message": f"upstream error: {e!r}", "type": "crovia_proxy"}},
+                )
+            return Response(
+                content=up_resp.content,
+                status_code=up_resp.status_code,
+                media_type=up_resp.headers.get("content-type", "application/json"),
+                headers={"X-Crovia-Stream-Sealed": "false"},
+            )
+
+        input_text = adapter.extract_input_text(body)
+        up_headers = _forwardable_headers(request)
+        client: httpx.AsyncClient = app.state.http_client
+
+        try:
+            up_resp = await client.post(upstream_url, headers=up_headers, content=raw_body)
+        except httpx.RequestError as e:
+            return JSONResponse(
+                status_code=502,
+                content={"error": {"message": f"upstream error: {e!r}", "type": "crovia_proxy"}},
+            )
+
+        if up_resp.status_code >= 400:
+            return Response(
+                content=up_resp.content,
+                status_code=up_resp.status_code,
+                media_type=up_resp.headers.get("content-type", "application/json"),
+            )
+
+        try:
+            resp_json: Dict[str, Any] = up_resp.json()
+        except json.JSONDecodeError:
+            return Response(
+                content=up_resp.content,
+                status_code=up_resp.status_code,
+                media_type=up_resp.headers.get("content-type", "application/octet-stream"),
+            )
+
+        joined_output, meta = adapter.extract_output_text(resp_json)
+        if not joined_output:
+            return JSONResponse(content=resp_json, status_code=up_resp.status_code)
+
+        sealed = await sealer.seal(
+            input_text=input_text,
+            output_text=joined_output,
+            generator_id=meta["generator_id"],
+            generator_version=meta.get("generator_version"),
+            modality="text",
+        )
+
+        resp_json = adapter.inject_seal(resp_json, sealed, joined_output)
+
+        out_headers: Dict[str, str] = {}
+        if settings.emit_response_header:
+            out_headers[CROVIA_SEAL_ID_HEADER] = sealed.seal_id
+            out_headers[CROVIA_SEAL_HEADER] = sealed.seal_base64
+            out_headers[CROVIA_ISSUER_HEADER] = sealer.public_hex
+
+        return JSONResponse(content=resp_json, status_code=up_resp.status_code, headers=out_headers)
+
+    # -------------------------------------------------------------
+    # /v1/messages           -> Anthropic Messages API
+    # -------------------------------------------------------------
+
+    @app.post("/v1/messages")
+    async def anthropic_messages(request: Request) -> Response:
+        upstream = _upstream_url_for_vendor(settings, "anthropic") + "/v1/messages"
+        return await _handle_native_vendor(request, AnthropicAdapter, upstream)
+
+    # -------------------------------------------------------------
+    # /v1beta/models/{model}:generateContent  -> Google Gemini
+    # -------------------------------------------------------------
+
+    @app.post("/v1beta/models/{model_with_action}")
+    async def google_generate_content(model_with_action: str, request: Request) -> Response:
+        # The path segment is e.g. "gemini-1.5-pro:generateContent" or
+        # "gemini-1.5-flash:streamGenerateContent".  We forward the entire
+        # path verbatim so the upstream sees the same call.
+        if ":streamGenerateContent" in model_with_action:
+            # Stream → forward verbatim, no sealing (see _handle_native_vendor).
+            up_url = (_upstream_url_for_vendor(settings, "google")
+                      + f"/v1beta/models/{model_with_action}")
+            return await _handle_native_vendor(request, GoogleAdapter, up_url)
+        if ":generateContent" not in model_with_action:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {"message": "unknown Google action", "type": "crovia_proxy"}},
+            )
+        up_url = _upstream_url_for_vendor(settings, "google") + f"/v1beta/models/{model_with_action}"
+        return await _handle_native_vendor(request, GoogleAdapter, up_url)
+
+    # -------------------------------------------------------------
+    # /v1/chat               -> Cohere Chat API
+    # -------------------------------------------------------------
+
+    @app.post("/v1/chat")
+    async def cohere_chat(request: Request) -> Response:
+        upstream = _upstream_url_for_vendor(settings, "cohere") + "/v1/chat"
+        return await _handle_native_vendor(request, CohereAdapter, upstream)
+
     return app
+
+
+def _upstream_url_for_vendor(settings: Settings, vendor: str) -> str:
+    """Resolve the configured upstream URL for a given vendor name."""
+    mapping = {
+        "anthropic": settings.upstream_anthropic_url,
+        "google":    settings.upstream_google_url,
+        "cohere":    settings.upstream_cohere_url,
+    }
+    return mapping[vendor].rstrip("/")

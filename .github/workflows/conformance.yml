@@ -61,6 +61,30 @@ jobs:
             echo "No tests/ directory; skipping."
           fi
 
+  proxy-tests:
+    name: "Proxy + native vendor adapters"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install reference + proxy
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e reference/python
+          python -m pip install -e integrations/proxy
+          python -m pip install pytest pytest-asyncio respx
+
+      - name: Run proxy tests (incl. Anthropic / Google / Cohere adapters)
+        run: python -m pytest integrations/proxy/tests -v
+
   spec-lint:
     name: "Spec & draft sanity"
     runs-on: ubuntu-latest

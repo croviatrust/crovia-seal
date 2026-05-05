@@ -34,12 +34,26 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # --- Upstream ---
+    # --- Upstream (OpenAI-compatible — used by /v1/chat/completions) ---
     upstream_url: str = Field(
         default="https://api.openai.com",
         description="Base URL of the OpenAI-compatible upstream (OpenAI, Ollama, vLLM, Together, etc.)",
     )
     upstream_timeout_seconds: float = 120.0
+
+    # --- Upstreams (native vendor APIs — one per supported vendor) ---
+    upstream_anthropic_url: str = Field(
+        default="https://api.anthropic.com",
+        description="Base URL for Anthropic Messages API (proxied at /v1/messages).",
+    )
+    upstream_google_url: str = Field(
+        default="https://generativelanguage.googleapis.com",
+        description="Base URL for Google Gemini generateContent (proxied at /v1beta/models/{m}:generateContent).",
+    )
+    upstream_cohere_url: str = Field(
+        default="https://api.cohere.com",
+        description="Base URL for Cohere Chat API (proxied at /v1/chat).",
+    )
 
     # --- Identity ---
     issuer_id: str = Field(
