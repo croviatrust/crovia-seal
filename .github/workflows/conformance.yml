@@ -86,19 +86,31 @@ jobs:
             xml2rfc --text --html "$xml"
           done
 
-      - name: Check rendered TXT is ASCII-clean
+      - name: Check the latest draft is ASCII-clean
         working-directory: standards
         run: |
+          # Find the highest-numbered draft revision and require it to be
+          # strictly ASCII (older revisions are historical, may carry
+          # non-ASCII typography; only the newest must idnits-clean).
+          latest=$(ls draft-crovia-seal-*.txt 2>/dev/null | sort | tail -n 1)
+          if [ -z "$latest" ]; then
+            echo "::error::no draft-crovia-seal-*.txt found"
+            exit 1
+          fi
+          echo "Checking ASCII-cleanness of $latest ..."
+          # grep -P '[^\x00-\x7F]' returns matching lines; -c counts them.
+          # If the file has no non-ASCII bytes, grep exits 1 (no match) -> we treat that as success.
+          if grep -P '[^\x00-\x7F]' "$latest" >/dev/null 2>&1; then
+            echo "::error::$latest contains non-ASCII characters; idnits will warn"
+            grep -nP '[^\x00-\x7F]' "$latest" | head -n 5
+            exit 1
+          fi
+          echo "$latest is strictly ASCII."
+
+          # For older revisions, only emit a warning (not a failure).
           for txt in draft-crovia-seal-*.txt; do
-            if ! grep -P '^[\x00-\x7F]*$' -q "$txt" 2>/dev/null; then
-              echo "::warning::$txt contains non-ASCII characters"
+            if [ "$txt" = "$latest" ]; then continue; fi
+            if grep -P '[^\x00-\x7F]' "$txt" >/dev/null 2>&1; then
+              echo "::warning::$txt contains non-ASCII (historical, ignored)"
             fi
-            python3 -c "
-import sys
-with open('$txt','rb') as f:
-    b = f.read()
-n = sum(1 for c in b if c > 127)
-print(f'$txt: {n} non-ASCII bytes')
-sys.exit(1 if n and '$txt'.endswith('-01.txt') else 0)
-"
           done
