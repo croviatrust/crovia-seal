@@ -85,6 +85,81 @@ Two artefacts are written each run:
 - `0` — all checks pass.
 - `2` — at least one check failed (cron MAILTO will deliver the script output).
 
+## `disk_guard.sh`
+
+Disk-pressure watchdog that runs every 15 minutes (offset by 7 min from the
+smoke probe to avoid a thundering herd). It writes a public status JSON at
+`https://croviatrust.com/registry/data/_disk_guard.json` and is itself checked
+by `smoke_public.sh`, so a disk-pressure regression surfaces in the same
+dashboard as the public-page regressions.
+
+Severity ladder:
+
+| Root disk | Severity   | Action taken                                          |
+| --------- | ---------- | ----------------------------------------------------- |
+| `< 85%`   | `ok`       | Log line only.                                        |
+| `>= 85%`  | `warn`     | Archive PostgreSQL backups older than the last 3 to the Hetzner Cloud Volume. |
+| `>= 95%`  | `critical` | Truncate `btmp/btmp.1`, `journalctl --vacuum-time=3d`, `docker system prune -af`, `apt-get clean`, truncate any `/var/log/crovia/*.log` >100MB to its last 10MB. |
+
+The `actions_taken` array in the status JSON records exactly which mitigations
+fired on the most recent run, so the audit trail is self-documenting.
+
+## Post-mortem 2026-05-06 — `/dev/sda1` 100% full + SSH starvation
+
+Around 17:25 CEST the production server (`CroviaTrsut-1`, CX43) became
+unreachable: SSH connections timed out during banner exchange, the public
+pages stopped responding, and Hetzner's metric panel showed 300% CPU and
+1.5 GB/s sustained disk reads.
+
+**Root cause**: `/dev/sda1` was 100% full (23 MB free of 38 GB). ext4 in
+out-of-space conditions enters a panic-scan mode where every allocation
+requires a near-exhaustive read of the free-blocks bitmap, which produced
+the 1.5 GB/s sustained read figure. With the disk pinned, sshd could not
+finish even its TCP banner exchange.
+
+**Contributing factors** (the things that filled the disk):
+
+1. `/root/.latent_cache` (2.7 GB of orphaned tensor binaries from March)
+   was never cleaned up after a refactor that moved the live cache to a
+   bind-mounted location on the Cloud Volume.
+2. `/opt/crovia/venv` (300 MB) was a stale duplicate of `/opt/crovia/.venv`
+   left behind from a January migration.
+3. Two daily PostgreSQL dumps (`tpr_backup_*.sql.gz`, ~265 MB each) had
+   accumulated on root instead of being rotated to the volume.
+4. `/var/log/btmp` had grown to 90 MB of failed-login records, evidence of
+   an active SSH brute-force attempt that was a constant secondary I/O
+   drain.
+
+**Recovery** (executed 17:32–17:45 CEST):
+
+1. Power-cycled the host via Hetzner Console (the only path with the
+   filesystem in panic).
+2. Killed any in-flight `axiom_proof_regen.sh` and wrapped the cron entry
+   in `flock -n /var/lock/crovia.regen.lock` so multiple runs cannot stack.
+3. Archived the orphaned latent cache, the stale venv, and the older
+   PostgreSQL dump to the Cloud Volume; truncated `btmp`/`btmp.1`.
+4. Expanded the Cloud Volume from 49 GB to 100 GB on the Hetzner side and
+   ran `resize2fs /dev/sdb` online (no remount).
+5. Migrated `/var/www/registry/data/substrate/proof/` (1.1 GB, written
+   hourly by the regen, read by every public verifier hit) to the Cloud
+   Volume with a symlink so the public URL is unchanged. This both freed
+   space on root and offloaded the regen's hot-path I/O.
+6. Promoted `disk_guard.sh` from a passive logger into an active
+   auto-mitigator with the severity ladder documented above and exposed
+   its status as a public JSON consumed by the smoke probe.
+
+**Final state**: root 87%/4.8 GB free, volume 44%/53 GB free, smoke 12/12
+green, load average 0.77.
+
+**Lessons that became checks**:
+
+- The smoke probe now hits `/registry/data/_disk_guard.json` and fails on
+  `"severity":"critical"`. Disk pressure now surfaces with the same 15-min
+  detection latency as broken JS or duplicate CORS headers.
+- The hourly regen cannot stack on itself any more (`flock`).
+- Hot-path artefacts that grow without bound (proof bundles) live on the
+  Cloud Volume, never on the root device.
+
 ## Adding a new check
 
 Add a `check "<name>" "<url>" "<must_contain>" "<must_not_contain>"` line near

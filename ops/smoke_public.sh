@@ -51,6 +51,9 @@ SAMPLE_SEAL=sl_0caa8c89d4cb4e9e344c978fdb3031bce9094732
 check "seal_api_get"      "https://seal.croviatrust.com/v1/seal/$SAMPLE_SEAL"       "seal_version"          ""
 check_cors "seal_api_cors" "https://seal.croviatrust.com/v1/seal/$SAMPLE_SEAL"
 
+# --- host disk health (fails loudly if root >=95%, the failure mode of 2026-05-06) ---
+check "disk_guard"        "https://croviatrust.com/registry/data/_disk_guard.json"  "severity"             "critical"
+
 # --- proof bundle coverage: a known-good axiom must resolve ---
 KNOWN_AXIOM=axm_5db69ee63ae0333bc6e6342aef40b1aa12dbf5cbeacabe1df8bd23ad848fb9b7
 check "proof_bundle"      "https://croviatrust.com/registry/data/substrate/proof/5d/${KNOWN_AXIOM}.json" "axiom_id" ""
