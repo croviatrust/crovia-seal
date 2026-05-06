@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # smoke_public.sh — public-surface smoke tests, runs every 15 min.
-# Goal: catch regressions like the 2026-05-05 incidents within 15min,
-# not 24h. Writes a status JSON consumed by /registry/_smoke.json.
+# Goal: catch regressions like the 2026-05-05/06 incidents within 15min.
+# Writes /var/www/registry/data/_smoke.json (machine-readable, public).
 set -u
 LOG=/var/log/crovia/smoke_public.log
 OUT=/var/www/registry/data/_smoke.json
@@ -21,7 +21,8 @@ check() {
   if [ -n "$must_contain" ] && ! echo "$body" | grep -qF "$must_contain"; then ok="0"; reason="${reason:-missing_marker}"; fi
   if [ -n "$must_not" ] && echo "$body" | grep -qF "$must_not"; then ok="0"; reason="${reason:-bad_marker_present}"; fi
   if [ "$ok" = "0" ]; then FAILED=$((FAILED+1)); fi
-  RESULTS+=("{\"name\":\"$name\",\"url\":\"$url\",\"status\":$status,\"ok\":$ok,\"reason\":\"$reason\"}")
+  local esc_url=$(echo -n "$url" | sed "s|\"|\\\\\"|g")
+  RESULTS+=("{\"name\":\"$name\",\"url\":\"$esc_url\",\"status\":$status,\"ok\":$ok,\"reason\":\"$reason\"}")
 }
 
 check_cors() {
@@ -34,31 +35,76 @@ check_cors() {
   RESULTS+=("{\"name\":\"$name\",\"url\":\"$url\",\"acao_count\":$acao_count,\"ok\":$ok,\"reason\":\"$reason\"}")
 }
 
-# --- consumer-facing pages: must load, NOT have JS-error markers ---
-check "check.html"        "https://croviatrust.com/check.html"                      "ed.etc.sha512Sync"     "ed.hashes.sha512"
-check "verifier"          "https://croviatrust.com/registry/v/"                     "every hour at :15 UTC" "04:15 UTC<"
-check "substrate cockpit" "https://croviatrust.com/registry/substrate/"             "operational"           ""
-check "chains explorer"   "https://croviatrust.com/registry/chains/"                "refreshing manifest"   ""
+# ============================================================================
+# CONSUMER PAGES — must load + contain page-unique title fragment
+# (anti-regressions on critical pages also have must_not_contain markers)
+# ============================================================================
+C="https://croviatrust.com"
 
-# --- public data feeds: must be valid JSON with expected shape ---
-check "trust-root"        "https://seal.croviatrust.com/trust-root.json"            "trust_root_version"   ""
-check "ots_anchors"       "https://croviatrust.com/registry/data/substrate/ots_anchors.json" "n_bitcoin"      ""
-check "chains.json"       "https://croviatrust.com/registry/data/substrate/chains.json"      "axiom_ids"      ""
-check "collectors.json"   "https://croviatrust.com/registry/data/substrate/collectors.json"  "collectors"     ""
+# Homepage + brand pages
+check "home"               "$C/"                         "Signed Temporal Ledger"               ""
+check "check.html"         "$C/check.html"               "Is this AI output"                    "ed.hashes.sha512"
+check "whitepaper"         "$C/whitepaper.html"          "Evidence Infrastructure"              ""
+check "how-to-read"        "$C/how-to-read.html"         "How to Read Crovia"                   ""
+check "absence-clock"      "$C/absence-clock.html"       "Silence Observatory"                  ""
+check "alive"              "$C/alive.html"               "System is Alive"                      ""
 
-# --- seal API: must be reachable AND return single ACAO header ---
+# Registry index + 19 sub-pages
+check "registry"           "$C/registry/"                "Training Provenance"                  ""
+check "registry/provenance"      "$C/registry/provenance/"      "Provenance Graph"              ""
+check "registry/compliance"      "$C/registry/compliance/"      "Compliance"                    ""
+check "registry/enterprise"      "$C/registry/enterprise/"      "Enterprise Intelligence"       ""
+check "registry/chains"          "$C/registry/chains/"          "refreshing manifest"           ""
+check "registry/forensics"       "$C/registry/forensics/"       "Forensic Dossiers"             ""
+check "registry/verify"          "$C/registry/verify/"          "Crovia Passport"               ""
+check "registry/substrate"       "$C/registry/substrate/"       "operational"                   ""
+check "registry/ranking"         "$C/registry/ranking/"         "Compliance Ranking"            ""
+check "registry/v"               "$C/registry/v/"               "every hour at :15 UTC"         "04:15 UTC<"
+check "registry/diamond"         "$C/registry/diamond/"         "Diamond Archive"               ""
+check "registry/lineage"         "$C/registry/lineage/"         "Disclosure Lineage"            ""
+check "registry/cep"             "$C/registry/cep/"             "CEP Terminal"                  ""
+check "registry/omissions"       "$C/registry/omissions/"       "Registry Observer"             ""
+check "registry/risk"            "$C/registry/risk/"            "Dataset Risk Index"            ""
+check "registry/tpa"             "$C/registry/tpa/"             "Temporal Proof of Absence"     ""
+check "registry/pont"            "$C/registry/pont/"            "Proof of Non-Training"         ""
+check "registry/seal"            "$C/registry/seal/"            "Open Provenance Receipt"       ""
+check "registry/seal/spec"       "$C/registry/seal/spec/"       "Seal Specification"            ""
+check "registry/seal/threat-model" "$C/registry/seal/threat-model/" "Seal Threat Model"          ""
+
+# Seal subdomain
+check "seal_root"          "https://seal.croviatrust.com/"        "Crovia Seal Trust Root"      ""
+check "trust-root.json"    "https://seal.croviatrust.com/trust-root.json"     "trust_root_version"   ""
+check "trust-root.sig.json" "https://seal.croviatrust.com/trust-root.sig.json" "signature_hex"      ""
+check "seal_health"        "https://seal.croviatrust.com/health"  ""                              ""
+
+# ============================================================================
+# DATA FEEDS — must be valid JSON with expected shape
+# ============================================================================
+check "ots_anchors"        "$C/registry/data/substrate/ots_anchors.json" "n_bitcoin"             ""
+check "chains.json"        "$C/registry/data/substrate/chains.json"      "axiom_ids"             ""
+check "collectors.json"    "$C/registry/data/substrate/collectors.json"  "collectors"            ""
+
+# ============================================================================
+# SEAL API — reachable + exactly one ACAO header (anti 2026-05-05 dup-CORS)
+# ============================================================================
 SAMPLE_SEAL=sl_0caa8c89d4cb4e9e344c978fdb3031bce9094732
-check "seal_api_get"      "https://seal.croviatrust.com/v1/seal/$SAMPLE_SEAL"       "seal_version"          ""
+check "seal_api_get"       "https://seal.croviatrust.com/v1/seal/$SAMPLE_SEAL"   "seal_version"   ""
 check_cors "seal_api_cors" "https://seal.croviatrust.com/v1/seal/$SAMPLE_SEAL"
 
-# --- host disk health (fails loudly if root >=95%, the failure mode of 2026-05-06) ---
-check "disk_guard"        "https://croviatrust.com/registry/data/_disk_guard.json"  "severity"             "critical"
-
-# --- proof bundle coverage: a known-good axiom must resolve ---
+# ============================================================================
+# PROOF BUNDLE COVERAGE — known axiom must resolve
+# ============================================================================
 KNOWN_AXIOM=axm_5db69ee63ae0333bc6e6342aef40b1aa12dbf5cbeacabe1df8bd23ad848fb9b7
-check "proof_bundle"      "https://croviatrust.com/registry/data/substrate/proof/5d/${KNOWN_AXIOM}.json" "axiom_id" ""
+check "proof_bundle"       "$C/registry/data/substrate/proof/5d/${KNOWN_AXIOM}.json" "axiom_id"   ""
 
-# --- write status JSON ---
+# ============================================================================
+# HOST DISK HEALTH — anti 2026-05-06 disk-full incident
+# ============================================================================
+check "disk_guard"         "$C/registry/data/_disk_guard.json"           "severity"              "critical"
+
+# ============================================================================
+# Aggregate output
+# ============================================================================
 n=${#RESULTS[@]}
 joined=$(IFS=,; echo "${RESULTS[*]}")
 cat > "$OUT" <<JSON
