@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crovia-seal"
+version = "0.1.0"
+description = "Immutable continuity receipts for evolving AI systems. Offline cryptographic primitive — Ed25519 + canonical JSON, no network required."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Crovia Trust", email = "hello@croviatrust.com" }]
+requires-python = ">=3.9"
+keywords = [
+    "crovia",
+    "seal",
+    "continuity",
+    "receipt",
+    "ed25519",
+    "provenance",
+    "canonicalization",
+    "ai",
+    "transparency",
+    "csc-1",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "cryptography>=41.0",
+]
+
+[project.optional-dependencies]
+register = ["requests>=2.31"]
+test = ["pytest>=7", "requests>=2.31"]
+
+[project.urls]
+Homepage = "https://croviatrust.com/seal"
+Documentation = "https://croviatrust.com/seal"
+Repository = "https://github.com/croviatrust/crovia-seal"
+Issues = "https://github.com/croviatrust/crovia-seal/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+crovia_seal = ["py.typed"]
