@@ -8,20 +8,25 @@
   <body>
     <header>
       <div class="logo">Crovia Seal</div>
-      <div class="version" id="version">v0.5.0</div>
+      <div class="version" id="version">v0.6.0</div>
     </header>
 
     <section class="identity">
-      <div class="label">Your issuer</div>
-      <div class="issuer-id" id="issuer-id">...</div>
-      <div class="pubkey mono" id="pubkey">...</div>
+      <div class="label">Trust issuer</div>
+      <div class="issuer-id" id="issuer-id">…</div>
+      <div class="pubkey mono" id="pubkey">…</div>
       <div class="created" id="created"></div>
-      <button type="button" class="secondary" id="reset-identity">Reset identity</button>
     </section>
 
     <section class="stats">
-      <div><span id="count">0</span> seals emitted</div>
+      <div><span id="count">0</span> seals issued</div>
       <a href="#" id="open-verify">Open universal verifier</a>
+    </section>
+
+    <section class="links">
+      <a href="#" id="open-about">How it works</a>
+      &nbsp;·&nbsp;
+      <a href="#" id="open-privacy">Privacy</a>
     </section>
 
     <section class="recent">
@@ -30,7 +35,7 @@
     </section>
 
     <footer>
-      <span class="dim">local keys, no server</span>
+      <span class="dim">seal.croviatrust.com · CROVIA-SEAL-v1</span>
     </footer>
 
     <script type="module" src="./popup.ts"></script>

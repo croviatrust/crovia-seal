@@ -3,7 +3,6 @@
  */
 import type {
   GetPublicIdentityRequest, GetPublicIdentityResponse,
-  ResetIdentityRequest, ResetIdentityResponse,
   ListRecentSealsRequest, ListRecentSealsResponse,
 } from '../lib/messaging';
 
@@ -61,27 +60,27 @@ async function refreshRecent(): Promise<void> {
   }
 }
 
-async function resetIdentity(): Promise<void> {
-  if (!confirm('Reset identity? The current private key will be destroyed and a new one generated. Previously-emitted seals remain valid but will point to the old pubkey.')) return;
-  const r = await chrome.runtime.sendMessage<ResetIdentityRequest, ResetIdentityResponse>(
-    { type: 'reset_identity' },
-  );
-  if (!r.ok) {
-    alert('Reset failed: ' + (r.error ?? 'unknown'));
-    return;
-  }
-  await refreshIdentity();
-}
-
 function openVerifier(ev: Event): void {
   ev.preventDefault();
-  const url = chrome.runtime.getURL('src/verify/verify.html');
-  chrome.tabs.create({ url });
+  chrome.tabs.create({ url: 'https://croviatrust.com/check.html' });
+}
+
+function openAbout(ev: Event): void {
+  ev.preventDefault();
+  chrome.tabs.create({ url: 'https://croviatrust.com/seal/' });
+}
+
+function openPrivacy(ev: Event): void {
+  ev.preventDefault();
+  chrome.tabs.create({ url: 'https://croviatrust.com/seal/privacy.html' });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  $<HTMLButtonElement>('reset-identity').addEventListener('click', () => void resetIdentity());
   $<HTMLAnchorElement>('open-verify').addEventListener('click', openVerifier);
+  const about = document.getElementById('open-about');
+  if (about) about.addEventListener('click', openAbout);
+  const privacy = document.getElementById('open-privacy');
+  if (privacy) privacy.addEventListener('click', openPrivacy);
   void refreshIdentity();
   void refreshRecent();
 });

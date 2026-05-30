@@ -1,0 +1,56 @@
+name: release
+
+# Publishes both SDKs automatically on a version tag.
+#
+# One-time setup (repo Settings -> Secrets and variables -> Actions):
+#   NPM_TOKEN      npm automation token  (npmjs.com -> Access Tokens -> Automation)
+#   PYPI_TOKEN     PyPI API token        (pypi.org -> Account -> API tokens)
+#
+# Cut a release:
+#   npm version patch --prefix sdk/javascript   # or edit versions by hand
+#   git commit -am "release vX.Y.Z" && git tag vX.Y.Z && git push --tags
+#
+# The tag push triggers this workflow, which builds, tests and publishes
+# @crovia/seal to npm and crovia-seal to PyPI.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/javascript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci || npm install
+      - run: npm run build
+      - run: npm test --if-present
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-pypi:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade build twine
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - run: python -m twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

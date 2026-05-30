@@ -12,19 +12,44 @@
  *   - Perplexity    (www.perplexity.ai)
  */
 import { attachDetector } from './detector-base';
+import { attachPassiveDetector } from './passive-detector';
 import { chatgpt, claude, gemini, perplexity } from './hosts';
+
+// eslint-disable-next-line no-console
+console.log('[crovia-seal] content script loaded on', window.location.hostname);
 
 const host = window.location.hostname;
 
+function diagSelectors(adapter: { name: string; assistantSelector: string }): void {
+  try {
+    const selectors = adapter.assistantSelector.split(', ');
+    let matched = 0;
+    for (const s of selectors) {
+      try {
+        matched += document.querySelectorAll(s).length;
+      } catch { /* invalid selector in this context */ }
+    }
+    // eslint-disable-next-line no-console
+    console.log(`[crovia-seal:${adapter.name}] matched ${matched} element(s) at load time`);
+  } catch { /* ignore all errors in diag */ }
+}
+
+// 1) ACTIVE SEALER — only on supported AI chat hosts (inject "Seal" button)
 if (host === 'chatgpt.com' || host === 'chat.openai.com') {
+  diagSelectors(chatgpt);
   attachDetector(chatgpt);
 } else if (host === 'claude.ai') {
+  diagSelectors(claude);
   attachDetector(claude);
 } else if (host === 'gemini.google.com') {
+  diagSelectors(gemini);
   attachDetector(gemini);
 } else if (host === 'www.perplexity.ai' || host === 'perplexity.ai') {
+  diagSelectors(perplexity);
   attachDetector(perplexity);
-} else {
-  // eslint-disable-next-line no-console
-  console.log('[crovia-seal] content script loaded on', host, '(no detector for this host)');
 }
+
+// 2) PASSIVE DETECTOR — runs everywhere (Twitter, news, Reddit, anywhere),
+//    finds sealed text via invisible CIM markers and shows a verified badge.
+//    This is what makes Crovia Seal recognizable across the entire web.
+attachPassiveDetector();

@@ -12,15 +12,15 @@
  * The database is intentionally minimal: a single object store `seals`
  * keyed by `seal_id`, plus a secondary index on `timestamp.emitted_at`.
  */
-import type { Seal } from '@crovia/seal';
+import type { ServerSeal } from './messaging';
 
 const DB_NAME = 'crovia-seal-extension';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'seals';
 
 export interface StoredSeal {
-  seal: Seal;
-  emittedAt: string;     // seal.timestamp.emitted_at
+  seal: ServerSeal;
+  emittedAt: string;     // seal.issued_at
   site: string;          // host where the output was captured
   visibleExcerpt: string; // first ~140 chars of the output, for UI preview
 }

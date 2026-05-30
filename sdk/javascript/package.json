@@ -32,8 +32,16 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": "./dist/browser.js",
       "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser.js"
     }
+  },
+  "bin": {
+    "crovia-seal": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -42,7 +50,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean --minify --target=es2022",
+    "build": "tsup src/index.ts --format esm --dts --clean --minify --target=es2022 && esbuild src/index.ts --bundle --format=esm --target=es2022 --minify --outfile=dist/browser.js --platform=browser --log-level=warning && esbuild src/cli.ts --bundle --format=esm --target=es2022 --platform=node --outfile=dist/cli.js --banner:js='#!/usr/bin/env node' --external:@noble/ed25519 --external:@noble/hashes",
     "test": "vitest run",
     "test:watch": "vitest",
     "size": "npm run build && du -sh dist/*",
@@ -53,6 +61,7 @@
     "@noble/hashes": "^1.4.0"
   },
   "devDependencies": {
+    "esbuild": "^0.24.0",
     "@types/node": "^20.11.0",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",

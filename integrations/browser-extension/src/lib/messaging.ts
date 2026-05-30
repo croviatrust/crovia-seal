@@ -1,13 +1,26 @@
 /**
  * Typed message protocol between content scripts, popup, and service worker.
+ *
+ * Server-backed mode: the extension calls seal.croviatrust.com for signing.
+ * No local private keys. CIM format matches production check.html.
  */
-import type { Seal } from '@crovia/seal';
+
+/** Seal object as returned by the Crovia Seal Service (sl_ format). */
+export interface ServerSeal {
+  seal_version: string;
+  seal_id: string;
+  issuer: { id: string; pubkey_alg: string; pubkey: string };
+  generator: { vendor: string; model: string };
+  subject: { input_hash: string; output_hash: string; output_length: number };
+  issued_at: string;
+  signature: string;
+  [key: string]: unknown;
+}
 
 export type RequestType =
   | 'seal_output'
   | 'verify_seal'
   | 'get_public_identity'
-  | 'reset_identity'
   | 'list_recent_seals';
 
 export interface SealOutputRequest {
@@ -20,18 +33,18 @@ export interface SealOutputRequest {
 }
 export interface SealOutputResponse {
   ok: boolean;
-  seal?: Seal;
+  seal?: ServerSeal;
   cim?: string;          // the zero-width mark ready to append
   error?: string;
 }
 
 export interface VerifySealRequest {
   type: 'verify_seal';
-  seal: unknown;
-  pinnedPubkeyHex?: string;
+  sealId: string;
 }
 export interface VerifySealResponse {
   ok: boolean;
+  seal?: ServerSeal;
   errors?: string[];
   sealId?: string | null;
 }
@@ -45,9 +58,6 @@ export interface GetPublicIdentityResponse {
   error?: string;
 }
 
-export interface ResetIdentityRequest { type: 'reset_identity'; }
-export interface ResetIdentityResponse { ok: boolean; publicHex?: string; error?: string; }
-
 export interface ListRecentSealsRequest { type: 'list_recent_seals'; limit?: number; }
 export interface ListRecentSealsResponse {
   ok: boolean;
@@ -59,12 +69,10 @@ export type AnyRequest =
   | SealOutputRequest
   | VerifySealRequest
   | GetPublicIdentityRequest
-  | ResetIdentityRequest
   | ListRecentSealsRequest;
 
 export type AnyResponse =
   | SealOutputResponse
   | VerifySealResponse
   | GetPublicIdentityResponse
-  | ResetIdentityResponse
   | ListRecentSealsResponse;

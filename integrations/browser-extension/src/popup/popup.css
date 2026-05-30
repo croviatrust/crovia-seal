@@ -1,12 +1,14 @@
 :root {
-  --bg: #0f172a;
-  --fg: #e2e8f0;
-  --fg-dim: #94a3b8;
-  --accent: #0f766e;
-  --accent-bright: #14b8a6;
+  --bg: #000000;
+  --bg-soft: #060810;
+  --fg: #e4e8ee;
+  --fg-dim: #6b7686;
+  --accent: #1ec5ff;
+  --accent-deep: #0aa1d9;
+  --accent-soft: rgba(30,197,255,.13);
   --danger: #dc2626;
-  --border: #1e293b;
-  --card: #111827;
+  --border: #1a212d;
+  --card: #0c1018;
   color-scheme: dark;
 }
 
@@ -33,7 +35,7 @@ header {
   font-weight: 700;
   font-size: 15px;
   letter-spacing: 0.01em;
-  color: var(--accent-bright);
+  color: var(--accent);
 }
 
 .version {
@@ -76,10 +78,10 @@ section {
 button {
   display: inline-block;
   padding: 6px 10px;
-  border: 0;
+  border: 1px solid rgba(30,197,255,.32);
   border-radius: 6px;
-  background: var(--accent);
-  color: #ecfdf5;
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 600;
   font-size: 12px;
   cursor: pointer;
@@ -101,7 +103,7 @@ button:hover { filter: brightness(1.15); }
 }
 
 .stats a {
-  color: var(--accent-bright);
+  color: var(--accent);
   text-decoration: none;
   font-weight: 600;
 }
@@ -126,7 +128,7 @@ button:hover { filter: brightness(1.15); }
 
 .seal-id {
   font-family: ui-monospace, monospace;
-  color: var(--accent-bright);
+  color: var(--accent);
   font-size: 11px;
 }
 
