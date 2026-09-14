@@ -19,12 +19,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install test runner
-        run: python -m pip install pytest
+      - name: Install reference and test runner
+        run: |
+          python -m pip install -e reference/python
+          python -m pip install pytest
 
       - name: Test protocol profile classification
         working-directory: integrations/seal-svc
         run: python -m pytest tests/test_protocol_profiles.py -v
+
+      - name: Compile the production service
+        run: python -m py_compile integrations/seal-svc/app.py integrations/seal-svc/protocol_profiles.py
 
       - name: Reject legacy emission in source
         run: |
