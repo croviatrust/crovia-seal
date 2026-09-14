@@ -215,11 +215,11 @@ def sign_draft(req: DraftSignRequest, request: Request):
 
 
 @app.get("/v1/seal/{seal_id}")
-def get_seal(seal_id: str):
+def get_seal(seal_id: str, response: Response):
     seal = INDEX.get(seal_id)
     if seal is None:
         raise HTTPException(status_code=404, detail="not found")
-    return {
-        "profile": classify_profile(seal).value,
-        "seal": seal,
-    }
+    # Preserve the historical response body for existing clients. Profile
+    # metadata is additive and carried in a response header.
+    response.headers["X-Crovia-Seal-Profile"] = classify_profile(seal).value
+    return seal
