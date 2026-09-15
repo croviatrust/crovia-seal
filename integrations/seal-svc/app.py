@@ -1,117 +1,132 @@
-"""
-Crovia Seal Service v1 — public sealing + retrieval endpoint.
+"""Crovia Seal public service.
 
-POST /v1/sign      -> sign an AI output, return canonical seal
-GET  /v1/seal/{id} -> retrieve a previously-signed seal by its seal_id
-GET  /v1/stats     -> public counters (total seals, last seal time)
-GET  /health       -> 200 if running
-
-Free, no auth. Rate-limit via a simple in-memory token bucket per IP.
-Persists seals to JSON-Lines append-only log; reload-resilient.
-
-Deployment (see ../../STATUS.md session 2026-05-04 part 3):
-    - expects /opt/crovia/keys/seal/private.hex + public.hex
-    - listens on 127.0.0.1:8090
-    - fronted by nginx at seal.croviatrust.com/v1/* and /health
+Historical v1 records remain readable byte-for-byte. New issuance is available
+only through /v2/sign and emits the draft-crovia-seal-01 profile implemented by
+the repository reference package.
 """
 from __future__ import annotations
-import hashlib, json, os, secrets, time
+
+import json
+import os
+import threading
+import time
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ConfigDict
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from pydantic import BaseModel, ConfigDict, Field
 
-# ----------------------------- KEY LOAD --------------------------------
-KEY_PATH = "/opt/crovia/keys/seal/private.hex"
-PUB_PATH = "/opt/crovia/keys/seal/public.hex"
-ISSUER   = "urn:crovia:seal-issuer:crovia-trust"
+from crovia_seal.keys import load_issuer_key
+from crovia_seal.seal import compute_seal_hash, emit_seal, verify_seal
+from protocol_profiles import Profile, classify_profile
 
-with open(KEY_PATH) as f:
-    _SEED = bytes.fromhex(f.read().strip())
-PRIV = Ed25519PrivateKey.from_private_bytes(_SEED)
-PUB_HEX = open(PUB_PATH).read().strip()
 
-# ----------------------------- STORAGE ---------------------------------
+KEY_PATH = Path("/opt/crovia/keys/seal/private.hex")
+PUB_PATH = Path("/opt/crovia/keys/seal/public.hex")
+ISSUER = "urn:crovia:seal-issuer:crovia-trust"
 DATA_DIR = Path("/opt/crovia/seal-svc/data")
-DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOG_PATH = DATA_DIR / "seals.jsonl"
-INDEX: Dict[str, dict] = {}
-
-def _load_index():
-    if not LOG_PATH.exists(): return
-    for line in LOG_PATH.open():
-        line = line.strip()
-        if not line: continue
-        try:
-            s = json.loads(line)
-            INDEX[s["seal_id"]] = s
-        except Exception: pass
-
-_load_index()
-
-# ----------------------------- CSC-1 -----------------------------------
-def csc1_canonicalize(obj: Any) -> bytes:
-    """Strict subset of RFC 8785 (no floats; UTF-16 sorted keys)."""
-    if obj is None: return b"null"
-    if obj is True: return b"true"
-    if obj is False: return b"false"
-    if isinstance(obj, int):
-        if not -(2**53 - 1) <= obj <= 2**53 - 1:
-            raise ValueError("integer out of safe range")
-        return str(obj).encode()
-    if isinstance(obj, float):
-        raise ValueError("CSC-1 forbids floats in signed payload")
-    if isinstance(obj, str):
-        return json.dumps(obj, ensure_ascii=False).encode("utf-8")
-    if isinstance(obj, list):
-        return b"[" + b",".join(csc1_canonicalize(x) for x in obj) + b"]"
-    if isinstance(obj, dict):
-        keys = sorted(obj.keys())
-        if any(not isinstance(k, str) for k in keys):
-            raise ValueError("non-string key")
-        items = [csc1_canonicalize(k) + b":" + csc1_canonicalize(obj[k]) for k in keys]
-        return b"{" + b",".join(items) + b"}"
-    raise ValueError(f"unsupported type {type(obj)}")
-
-def sign_seal(payload: dict) -> dict:
-    domain = b"CROVIA-SEAL-v1\n"
-    canon = csc1_canonicalize(payload)
-    sig = PRIV.sign(domain + canon)
-    payload["signature"] = "Ed25519:" + sig.hex()
-    return payload
-
-# ----------------------------- RATE LIMIT ------------------------------
 RATE_WINDOW_S = 3600
-RATE_LIMIT    = 1000
+RATE_LIMIT = 1000
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+ISSUER_KEY = load_issuer_key(ISSUER, KEY_PATH.read_text().strip())
+EXPECTED_PUBLIC_HEX = PUB_PATH.read_text().strip().lower()
+if ISSUER_KEY.public_hex != EXPECTED_PUBLIC_HEX:
+    raise RuntimeError("seal public key does not match the configured private key")
+
+INDEX: Dict[str, dict] = {}
+_ISSUE_LOCK = threading.Lock()
 _buckets: Dict[str, deque] = defaultdict(deque)
+
+
+def _load_index() -> None:
+    if not LOG_PATH.exists():
+        return
+    with LOG_PATH.open(encoding="utf-8") as stream:
+        for line in stream:
+            try:
+                seal = json.loads(line)
+                if isinstance(seal, dict) and isinstance(seal.get("seal_id"), str):
+                    INDEX[seal["seal_id"]] = seal
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                # The append-only source remains untouched. Invalid records are
+                # not indexed and must be handled by offline recovery tooling.
+                continue
+
+
+def _latest_draft() -> Optional[dict]:
+    drafts = [
+        seal for seal in INDEX.values()
+        if classify_profile(seal) is Profile.DRAFT_01
+    ]
+    if not drafts:
+        return None
+    return max(drafts, key=lambda item: item["chain"]["sequence"])
+
+
+def _append(seal: dict) -> None:
+    encoded = json.dumps(
+        seal, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    )
+    with LOG_PATH.open("a", encoding="utf-8") as stream:
+        stream.write(encoded + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    INDEX[seal["seal_id"]] = seal
+
+
+def _emitted_at(seal: dict) -> Optional[str]:
+    profile = classify_profile(seal)
+    if profile is Profile.DRAFT_01:
+        return seal["timestamp"]["emitted_at"]
+    if profile is Profile.LEGACY_V1:
+        return seal.get("issued_at")
+    return None
+
 
 def rate_check(ip: str) -> bool:
     now = time.time()
-    q = _buckets[ip]
-    while q and now - q[0] > RATE_WINDOW_S:
-        q.popleft()
-    if len(q) >= RATE_LIMIT:
+    queue = _buckets[ip]
+    while queue and now - queue[0] > RATE_WINDOW_S:
+        queue.popleft()
+    if len(queue) >= RATE_LIMIT:
         return False
-    q.append(now)
+    queue.append(now)
     return True
 
-# ----------------------------- API -------------------------------------
-class SignRequest(BaseModel):
+
+_load_index()
+
+
+class Generator(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1, max_length=256)
+    version: Optional[str] = Field(default=None, max_length=256)
+    weights_hash: Optional[str] = Field(
+        default=None, pattern=r"^sha256:[0-9a-f]{64}$"
+    )
+    params: Dict[str, str] = Field(default_factory=dict)
+
+
+class DraftSignRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    input_text: str = Field(max_length=200_000)
     output_text: str = Field(min_length=1, max_length=200_000)
-    input_hash: str  = Field(pattern=r"^sha256:[0-9a-f]{64}$")
-    generator: dict
-    issuer_app: Optional[str] = None
+    modality: str = Field(default="text")
+    generator: Generator
+    checks: Optional[dict] = None
+
 
 class SignResponse(BaseModel):
     seal_id: str
+    profile: str
     seal: dict
 
-app = FastAPI(title="Crovia Seal Service", version="0.5.0")
+
+app = FastAPI(title="Crovia Seal Service", version="1.0.0-draft01")
+
 
 @app.middleware("http")
 async def cors_mw(request: Request, call_next):
@@ -122,59 +137,89 @@ async def cors_mw(request: Request, call_next):
             "Access-Control-Allow-Headers": "Content-Type",
             "Access-Control-Max-Age": "3600",
         })
-    resp = await call_next(request)
-    resp.headers["Access-Control-Allow-Origin"] = "*"
-    return resp
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
 
 @app.get("/health")
-def health(): return {"status": "ok", "issuer": ISSUER, "total_seals": len(INDEX)}
+def health():
+    return {
+        "status": "ok",
+        "issuer": ISSUER,
+        "issuance_profile": Profile.DRAFT_01.value,
+        "total_seals": len(INDEX),
+    }
+
 
 @app.get("/v1/stats")
 def stats():
-    last = max(INDEX.values(), key=lambda s: s.get("issued_at",""))["issued_at"] if INDEX else None
+    timestamps = [stamp for seal in INDEX.values() if (stamp := _emitted_at(seal))]
+    counts = {profile.value: 0 for profile in Profile}
+    for seal in INDEX.values():
+        counts[classify_profile(seal).value] += 1
     return {
         "total_seals": len(INDEX),
+        "profiles": counts,
         "issuer": ISSUER,
-        "last_seal_at": last,
+        "last_seal_at": max(timestamps) if timestamps else None,
+        "new_issuance_profile": Profile.DRAFT_01.value,
         "rate_limit": {"per_ip_per_hour": RATE_LIMIT},
     }
 
-@app.post("/v1/sign", response_model=SignResponse)
-def sign(req: SignRequest, request: Request):
+
+@app.post("/v1/sign")
+def retired_legacy_sign():
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "LEGACY_ISSUANCE_RETIRED",
+            "message": "Use /v2/sign; historical /v1 seals remain retrievable.",
+        },
+    )
+
+
+@app.post("/v2/sign", response_model=SignResponse)
+def sign_draft(req: DraftSignRequest, request: Request):
     ip = request.client.host if request.client else "0.0.0.0"
     if not rate_check(ip):
         raise HTTPException(status_code=429, detail="rate limit: 1000/hour per IP")
 
-    output_hash = "sha256:" + hashlib.sha256(req.output_text.encode("utf-8")).hexdigest()
-    seal_id = "sl_" + secrets.token_hex(20)
+    with _ISSUE_LOCK:
+        previous = _latest_draft()
+        sequence = 0 if previous is None else previous["chain"]["sequence"] + 1
+        prev_hash = None if previous is None else compute_seal_hash(previous)
+        seal = emit_seal(
+            issuer_key=ISSUER_KEY,
+            input_bytes=req.input_text.encode("utf-8"),
+            output_bytes=req.output_text.encode("utf-8"),
+            modality=req.modality,
+            generator_id=req.generator.id,
+            generator_version=req.generator.version,
+            generator_weights_hash=req.generator.weights_hash,
+            generator_params=req.generator.params,
+            sequence=sequence,
+            prev_seal_hash=prev_hash,
+            checks=req.checks,
+        )
+        result = verify_seal(seal, issuer_pubkey_hex=EXPECTED_PUBLIC_HEX)
+        if not result.ok:
+            raise HTTPException(status_code=500, detail="self-verification failed")
+        _append(seal)
 
-    payload = {
-        "seal_version": "crovia-seal-v1",
-        "seal_id": seal_id,
-        "issuer": {
-            "id": ISSUER,
-            "pubkey_alg": "Ed25519",
-            "pubkey": PUB_HEX,
-        },
-        "generator": req.generator,
-        "subject": {
-            "input_hash":    req.input_hash,
-            "output_hash":   output_hash,
-            "output_length": len(req.output_text),
-        },
-        "issued_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }
-    if req.issuer_app:
-        payload["issuer_app"] = req.issuer_app
+    return SignResponse(
+        seal_id=seal["seal_id"],
+        profile=Profile.DRAFT_01.value,
+        seal=seal,
+    )
 
-    seal = sign_seal(payload)
-    with LOG_PATH.open("a") as f:
-        f.write(json.dumps(seal) + "\n")
-    INDEX[seal_id] = seal
-    return SignResponse(seal_id=seal_id, seal=seal)
 
 @app.get("/v1/seal/{seal_id}")
-def get_seal(seal_id: str):
-    if seal_id not in INDEX:
+def get_seal(seal_id: str, response: Response):
+    seal = INDEX.get(seal_id)
+    if seal is None:
         raise HTTPException(status_code=404, detail="not found")
-    return INDEX[seal_id]
+    # Preserve the historical response body for existing clients. Profile
+    # metadata is additive and carried in a response header.
+    response.headers["X-Crovia-Seal-Profile"] = classify_profile(seal).value
+    return seal

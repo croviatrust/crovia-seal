@@ -89,10 +89,24 @@ def verify_seal_standalone(seal, pinned_pubkey_hex):
 
 Save as `verify_seal_mini.py`, call with your Seal dict and pinned key.
 
+## Canonical integrity is not byte-for-byte identity
+
+The signature covers the CSC-1 canonical representation of the signed fields,
+not the original JSON transport bytes. Reordering object members or changing
+insignificant JSON whitespace can leave the canonical payload unchanged and
+the signature valid. A green result therefore establishes integrity of the
+canonicalized signed values under the pinned issuer key; it does not establish
+that the submitted JSON serialization is byte-for-byte identical to a
+previously stored file.
+
+Where exact original bytes matter, preserve and compare those bytes separately.
+For committed content such as an AI output, verify the relevant content hash
+against the exact original content as required by the applicable profile.
+
 ## What this does *not* prove
 
-A valid signature proves that the issuer claimed this input, output, and
-metadata at the declared time. It does **not** prove:
+A valid signature proves that the pinned issuer key signed the canonicalized
+fields. It does **not** prove:
 
 - That the claim is true (the issuer could be lying about `generator.id`).
 - That the output was actually produced by the claimed model (no oracle
@@ -108,7 +122,7 @@ Inspect `result.errors`. Common failure modes:
 
 | Error pattern                                | Meaning                                          |
 | -------------------------------------------- | ------------------------------------------------ |
-| `signature: invalid`                         | Seal bytes tampered after signing, OR wrong key. |
+| `signature: invalid`                         | Signed canonical values changed, signature is malformed, or the wrong key was used. |
 | `issuer public key mismatch`                 | Pinned key differs from Seal's declared key.     |
 | `schema: seal_version must be ...`           | Not a v1 Seal, or field tampered.                |
 | `schema: unknown top-level fields: [...]`    | Extra fields added after signing.                |
@@ -128,5 +142,7 @@ If you verify a Seal whose issuer you believe has behaved maliciously
 - Any transparency-log operators that anchor the issuer's Seals.
 - (Optionally) the CROVIA Research team at info@croviatrust.com.
 
-The append-only chain means such evidence is non-repudiable: the issuer
-cannot deny having produced both Seals under their key.
+Valid signatures under a correctly pinned issuer key are cryptographic
+evidence that the corresponding canonical payloads were signed by control of
+that key. Conclusions about attribution, key compromise, intent, or legal
+non-repudiation require separate evidence and qualified assessment.

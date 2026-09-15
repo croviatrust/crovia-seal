@@ -110,8 +110,9 @@ and the bytes MUST be identical to those committed.
 
 ## Specification status
 
-- **IETF Internet-Draft**: [`draft-crovia-seal-00`](https://datatracker.ietf.org/doc/draft-crovia-seal/)
-  filed 2026-05-04 under the *Independent Submission* stream (Informational).
+- **IETF Internet-Draft**: [`draft-crovia-seal-01`](https://datatracker.ietf.org/doc/draft-crovia-seal/)
+  is the active individual Internet-Draft revision. Internet-Drafts are works in
+  progress; publication does not imply IETF endorsement or RFC status.
 - **Reference implementation**: Python 3.10+, see `reference/python/`.
 - **Conformance suite**: 41 cross-language test vectors
   (26 canonicalization cases + 10 valid signed seals + 5 fail-closed negative tests).
@@ -137,5 +138,5 @@ to maximize reuse by standards bodies.
 
 *Crovia Seal is maintained by Crovia Trust as an open standard.*
 *Issuer keys used in production are published at* [`seal.croviatrust.com/trust-root.json`](https://seal.croviatrust.com/trust-root.json).
-*Standards-track work happens in the IETF datatracker:* [`draft-crovia-seal`](https://datatracker.ietf.org/doc/draft-crovia-seal/).
+*Protocol design and implementation feedback tracks the active Internet-Draft:* [`draft-crovia-seal`](https://datatracker.ietf.org/doc/draft-crovia-seal/).
 *Feedback, implementation reports, and conformance test results are welcome via GitHub Issues.*
