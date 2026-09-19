@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://croviatrust.com/registry/seal/"><img src=".github/social-preview.png" width="720" alt="Crovia Seal — crovia.seal.v1. Tamper-evident, offline-verifiable receipts for AI outputs."></a>
+</p>
+
 # Crovia Seal
 
 [![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--crovia--seal--01-1ec5ff?style=flat-square)](https://datatracker.ietf.org/doc/draft-crovia-seal/)
