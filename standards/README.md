@@ -5,16 +5,21 @@ Seal protocol.
 
 ## Files
 
-* `draft-crovia-seal-00.xml`  &mdash; canonical xml2rfc v3 source (RFC 7991)
-* `draft-crovia-seal-00.txt`  &mdash; rendered plain-text form (the form submitted
-  to <https://datatracker.ietf.org/submit/>)
+* `draft-crovia-seal-01.xml`  &mdash; current revision, canonical xml2rfc v3 source (RFC 7991);
+  posted to the datatracker on 2026-05-05:
+  <https://datatracker.ietf.org/doc/draft-crovia-seal/>
+* `draft-crovia-seal-01.txt` / `.html`  &mdash; rendered forms of the current revision
+* `draft-crovia-seal-00.*`  &mdash; previous revision, kept for the record
+
+`crovia.seal.v1` objects and the conformance vectors in this repository track
+draft-01. The draft is an Internet-Draft, not an IETF standard.
 
 ## Building
 
 If you have `xml2rfc` v3 installed:
 
 ```
-xml2rfc draft-crovia-seal-00.xml --text --html
+xml2rfc draft-crovia-seal-01.xml --text --html
 ```
 
 The generated `.txt` and `.html` should be checked in alongside the `.xml`.
