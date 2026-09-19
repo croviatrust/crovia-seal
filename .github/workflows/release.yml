@@ -1,56 +1,95 @@
 name: release
 
-# Publishes both SDKs automatically on a version tag.
+# Publishes the two reference implementations on a version tag (vX.Y.Z):
+#   reference/python      -> PyPI  crovia-seal      (Trusted Publishing, no token stored here)
+#   reference/typescript  -> npm   @crovia/seal     (Trusted Publishing with provenance, no token stored here)
 #
-# One-time setup (repo Settings -> Secrets and variables -> Actions):
-#   NPM_TOKEN      npm automation token  (npmjs.com -> Access Tokens -> Automation)
-#   PYPI_TOKEN     PyPI API token        (pypi.org -> Account -> API tokens)
+# One-time setup, done once by a maintainer, never in this file:
+#   PyPI: pypi.org -> project crovia-seal -> Publishing -> add GitHub publisher
+#         owner croviatrust, repository crovia-seal, workflow release.yml, environment pypi
+#   npm:  npmjs.com -> package @crovia/seal -> Settings -> Trusted publisher
+#         GitHub Actions, organisation croviatrust, repository crovia-seal, workflow release.yml
+#   GitHub: Settings -> Environments -> create "pypi" and "npm" (optionally with required reviewers)
 #
 # Cut a release:
-#   npm version patch --prefix sdk/javascript   # or edit versions by hand
-#   git commit -am "release vX.Y.Z" && git tag vX.Y.Z && git push --tags
+#   edit reference/python/pyproject.toml and reference/typescript/package.json to the same version
+#   git commit -am "release vX.Y.Z" && git tag vX.Y.Z && git push origin main --tags
 #
-# The tag push triggers this workflow, which builds, tests and publishes
-# @crovia/seal to npm and crovia-seal to PyPI.
+# The tag must equal the package versions; the check job refuses to publish otherwise.
 
 on:
   push:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
-  publish-npm:
+  check:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sdk/javascript
     steps:
       - uses: actions/checkout@v4
+      - name: Tag matches both package versions
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PY=$(python3 -c "import tomllib;print(tomllib.load(open('reference/python/pyproject.toml','rb'))['project']['version'])")
+          TS=$(node -p "require('./reference/typescript/package.json').version")
+          echo "tag=$TAG python=$PY typescript=$TS"
+          test "$TAG" = "$PY" && test "$TAG" = "$TS"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python reference tests and conformance
+        run: |
+          pip install -e "reference/python[test]" 2>/dev/null || pip install -e reference/python pytest
+          python -m pytest -q reference/python/tests
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://registry.npmjs.org"
-      - run: npm ci || npm install
-      - run: npm run build
-      - run: npm test --if-present
-      - run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: TypeScript reference build and tests
+        working-directory: reference/typescript
+        run: |
+          npm ci
+          npm run build
+          npm test
 
   publish-pypi:
+    needs: check
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sdk/python
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install --upgrade build twine
+      - run: python -m pip install --upgrade build
       - run: python -m build
-      - run: python -m twine check dist/*
-      - run: python -m twine upload dist/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        working-directory: reference/python
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: reference/python/dist/
+          print-hash: true
+
+  publish-npm:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: reference/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --access public --provenance
