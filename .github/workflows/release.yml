@@ -9,7 +9,9 @@ name: release
 #         owner croviatrust, repository crovia-seal, workflow release.yml, environment pypi
 #   npm:  npmjs.com -> package @crovia/seal -> Settings -> Trusted publisher
 #         GitHub Actions, organisation croviatrust, repository crovia-seal, workflow release.yml
-#   GitHub: Settings -> Environments -> create "pypi" and "npm" (optionally with required reviewers)
+#   GitHub: Settings -> Environments -> create "pypi" and "npm" (optionally with required reviewers),
+#           then set repository variables PYPI_TRUSTED_PUBLISHER=configured and NPM_TRUSTED_PUBLISHER=configured
+#           (until then the publish jobs are skipped, not failed).
 #
 # Cut a release:
 #   edit reference/python/pyproject.toml and reference/typescript/package.json to the same version
@@ -56,6 +58,7 @@ jobs:
 
   publish-pypi:
     needs: check
+    if: vars.PYPI_TRUSTED_PUBLISHER == 'configured'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -76,6 +79,7 @@ jobs:
 
   publish-npm:
     needs: check
+    if: vars.NPM_TRUSTED_PUBLISHER == 'configured'
     runs-on: ubuntu-latest
     environment: npm
     permissions:
