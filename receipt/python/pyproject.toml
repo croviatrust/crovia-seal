@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crovia-receipt"
+version = "0.2.0"
+description = "Crovia Receipt (crovia.receipt.v1): lightweight client-side continuity receipts for AI outputs. Not a Crovia Seal; for crovia.seal.v1 use the crovia-seal package."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Crovia Trust", email = "info@croviatrust.com" }]
+requires-python = ">=3.9"
+keywords = [
+    "crovia",
+    "seal",
+    "continuity",
+    "receipt",
+    "ed25519",
+    "provenance",
+    "canonicalization",
+    "ai",
+    "transparency",
+    "csc-1",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "cryptography>=41.0",
+]
+
+[project.optional-dependencies]
+register = ["requests>=2.31"]
+test = ["pytest>=7", "requests>=2.31"]
+
+[project.urls]
+Homepage = "https://croviatrust.com/registry/seal/"
+Documentation = "https://github.com/croviatrust/crovia-seal/tree/main/receipt"
+Repository = "https://github.com/croviatrust/crovia-seal"
+Issues = "https://github.com/croviatrust/crovia-seal/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+crovia_receipt = ["py.typed"]

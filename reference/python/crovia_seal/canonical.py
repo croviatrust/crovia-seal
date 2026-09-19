@@ -44,7 +44,7 @@ _ESCAPE_MAP = {
 
 
 def _serialize_string(s: str) -> str:
-    """Serialize a Python str to a canonical JSON string literal.
+    r"""Serialize a Python str to a canonical JSON string literal.
 
     Follows RFC 8785 Section 3.2.2.2: the seven short escapes (",\,b,f,n,r,t)
     are used for the corresponding code points; any other control character

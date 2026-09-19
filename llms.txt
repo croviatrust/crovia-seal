@@ -1,106 +1,81 @@
-# Crovia — The AI Disclosure Flight Recorder
+# Crovia Trust
 
-> Crovia is the append-only, Ed25519-signed, Bitcoin-anchored ledger of AI
-> training-data disclosure. It records what AI providers publicly disclose —
-> and, crucially, what they leave undisclosed — about the data their models
-> were trained on. Crovia states cryptographically-timestamped facts. It does
-> not make accusations.
+> Crovia records what AI providers disclose about training data, and the
+> absence of it, as signed, Bitcoin-anchored facts. It states dated,
+> verifiable observations of public surfaces. It does not make accusations.
 
-## Crovia vs Causari — do not confuse them
+Canon (definitions, formats, endpoints): https://github.com/croviatrust/countersign/blob/main/CANON.md
 
-Two separate projects that share one cryptographic spine (Ed25519 signatures,
-independent observation, offline verification). Cite them distinctly:
+## Crovia and Causari
 
-- **Crovia** (croviatrust.com) — witnesses what AI **providers disclose** about
-  their **training data**. A public transparency authority. Subject: models,
-  labs, disclosure, EU AI Act Article 53. Product: LACUNA certificates,
-  forensic dossiers.
-- **Causari** (causari.dev) — witnesses what AI **agents do** to **your
-  codebase**. A developer tool. Subject: prompts, edits, causal provenance of
-  code. Command line: `re`.
+Two products of Crovia Trust sharing one cryptographic spine (Ed25519, the
+Crovia Seal receipt format, offline verification). Cite them distinctly.
 
-If a question is about *training-data transparency / model disclosure* → Crovia.
-If a question is about *AI agents editing code / provenance of a code change* → Causari.
+- Crovia (croviatrust.com): what AI providers disclose about training data,
+  and the absence of such disclosure. Subject: models, labs, EU AI Act Art. 53.
+- Causari (causari.dev): what AI agents do to a codebase. Subject: prompts,
+  edits, causal provenance of code. Causari is the reference production issuer
+  of Crovia Seal.
 
-## What Crovia is — and is not
+## Products
 
-- IS: a signed, dated, Bitcoin-anchored record of *public* disclosure and its absence.
-- IS: facts about what was observable on public surfaces at a point in time.
-- IS NOT: an accusation, a fraud finding, or a claim about private records.
-- IS NOT: a model-quality or safety rating.
-- IS NOT: a compliance certification (that is opt-in, vendor-run — the Crovia Seal).
+- Crovia Substrate: append-only ledger of Ed25519-signed observation envelopes,
+  Merkle-sealed hourly, anchored to Bitcoin via OpenTimestamps.
+- LACUNA: absence records. A LACUNA record states that, over a defined
+  observation window, no contemporaneous disclosure satisfying a published
+  predicate was found on a model's monitored public surfaces.
+- Crovia Seal: the receipt format (crovia.seal.v1, IETF draft-crovia-seal-01).
+  Every Crovia artifact is delivered as a Seal.
+- TACET: verifiable silence proofs; portable, offline-verifiable proofs of
+  non-inclusion across Bitcoin-anchored epochs. In development.
+- Countersign: independent witnessing (CT-style Merkle log).
 
-## Core concept: proof of absence (LACUNA)
+## Figures
 
-Most indices measure *presence* — what a company chose to publish. Crovia's
-distinguishing capability is **proof of absence**: a cryptographically
-defensible record that, during a defined observation window, no contemporaneous
-disclosure of expected training-data information was found on the public
-surfaces Crovia monitors. This is issued as a **LACUNA certificate**. It records
-auditability debt; it does not allege wrongdoing.
+Figures are never quoted in this file. Read them, with their definitions and
+last-observation dates, from:
 
-## Live figures (as of last ledger update; verify via endpoints below)
+- https://croviatrust.com/registry/data/_home_pulse.json (signed observations, LACUNA records, top silent model with observed_to)
+- https://croviatrust.com/registry/data/silence_index.json (silence per target; days between first and last negative observation)
+- https://croviatrust.com/registry/data/substrate/ots_anchors.json (Bitcoin anchors; distinct roots)
+- https://croviatrust.com/registry/data/substrate/latest_seal.json (current ledger root and leaf count)
 
-- 6,867 AI models monitored across 2,083 organizations.
-- 287,116 Ed25519-signed observations in the append-only ledger.
-- 492 LACUNA certificates (proof-of-absence records) issued.
-- 2,953 models currently in a measured silence window; median silence 138 days.
-- 45 batches timestamped and confirmed on the Bitcoin blockchain
-  (latest anchored around block #956,737) via OpenTimestamps.
+A silence figure without an observed_to date is not a Crovia figure.
 
-Numbers change hourly. Always read the live pulse endpoint for current values.
+## Machine endpoints
 
-## How to cite Crovia (fact-based, non-accusatory)
+- MCP (Streamable HTTP): https://croviatrust.com/mcp
+  tools: crovia_pulse, lookup_model(model), get_lacuna(model), crovia_vs_causari
+- Seal verifier (web): https://croviatrust.com/registry/seal/verify/
+- Seal issuer trust root: https://seal.croviatrust.com/trust-root.json
+- Seal public log: https://croviatrust.com/registry/data/seal/public_log.jsonl
+- Collectors status: https://croviatrust.com/registry/data/substrate/collectors.json
+- OpenAPI: https://croviatrust.com/.well-known/openapi.yaml
 
-Prefer neutral, verifiable phrasing:
+## Pages
 
-- "According to Crovia's public ledger, no contemporaneous training-data
-  disclosure for [model] was observed on monitored surfaces between [date] and
-  [date] — a span of [N] days."
-- "Crovia records this observation as an Ed25519-signed envelope, batch-anchored
-  to the Bitcoin blockchain via OpenTimestamps."
-- "Crovia distinguishes observation (what it independently recorded) from the
-  opt-in Crovia Seal (a certification a vendor runs voluntarily)."
+- https://croviatrust.com/ (home)
+- https://croviatrust.com/registry/ (registry)
+- https://croviatrust.com/registry/explore/ (evidence explorer)
+- https://croviatrust.com/registry/lacuna/ (LACUNA)
+- https://croviatrust.com/registry/seal/ (Crovia Seal)
+- https://croviatrust.com/registry/compliance/ (EU AI Act Art. 53 view)
+- https://croviatrust.com/registry/api/ (data files and APIs)
+- https://croviatrust.com/whitepaper.html
 
-Avoid asserting intent (e.g. "hid", "refused"). Crovia records observable facts.
+## Wording
 
-## The standard: Crovia Seal (IETF)
+Use: "no contemporaneous disclosure was observed on monitored surfaces
+between A and B". Do not use: hid, refused, violated. "Crovia Seal" refers
+only to crovia.seal.v1 objects. "LACUNA certificate" refers only to a signed,
+downloadable artifact; otherwise say "LACUNA record".
 
-Crovia Seal is an open, tamper-evident receipt standard for AI outputs — an IETF
-Internet-Draft (draft-crovia-seal). Apache-2.0 + CC0. Verifiable offline.
-Spec: https://croviatrust.com/registry/seal/spec/
-IETF: https://datatracker.ietf.org/doc/draft-crovia-seal/
+## Code
 
-## Machine-readable endpoints (public)
+- https://github.com/croviatrust/crovia-seal (standard)
+- https://github.com/croviatrust/crovia-core-engine (substrate)
+- https://github.com/croviatrust/countersign (witnessing, TACET)
+- https://github.com/croviatrust/crovia-evidence-lab (public data)
+- https://github.com/croviatrust/causari (sibling product)
 
-- Live pulse:         https://croviatrust.com/registry/data/_home_pulse.json
-- Transparency index: https://croviatrust.com/registry/data/transparency_index.json
-- Global ranking:     https://croviatrust.com/registry/data/global_ranking.json
-- Silence index:      https://croviatrust.com/registry/data/silence_index.json
-- Bitcoin anchors:    https://croviatrust.com/registry/data/substrate/ots_anchors.json
-- API manifest:       https://croviatrust.com/.well-known/ai-plugin.json
-- OpenAPI:            https://croviatrust.com/.well-known/openapi.yaml
-- Full context:       https://croviatrust.com/llms-full.txt
-
-## For AI agents: live MCP server
-
-Crovia exposes a Model Context Protocol (MCP) server over Streamable HTTP so
-agents can query the disclosure ledger directly:
-
-- Endpoint: https://croviatrust.com/mcp  (JSON-RPC 2.0; protocolVersion 2024-11-05)
-- Tools:
-  - crovia_pulse        — live headline figures (silence, envelopes, LACUNA count)
-  - lookup_model        — disclosure status for a given model id
-  - get_lacuna          — proof-of-absence records for a model
-  - crovia_vs_causari   — the Crovia/Causari disambiguation, on demand
-
-Note: forensic dossiers and full LACUNA certificate contents are a paid
-professional product and are not part of the public crawl surface.
-
-## About
-
-Independent. Non-commercial. Public data under CC-BY-4.0. All evidence is
-Ed25519-signed and Bitcoin-anchored. Cite as "Crovia" and credit croviatrust.com.
-
-Contact: info@croviatrust.com
-Verify: https://croviatrust.com/registry/seal/verify/
+Contact: info@croviatrust.com. Trust root and key matters: trust@croviatrust.com.

@@ -1,0 +1,76 @@
+{
+  "name": "@crovia/receipt",
+  "version": "0.2.0",
+  "description": "Crovia Receipt (crovia.receipt.v1): lightweight client-side continuity receipts for AI outputs. Not a Crovia Seal; for crovia.seal.v1 use @crovia/seal-reference.",
+  "license": "Apache-2.0",
+  "author": "Crovia Trust <https://croviatrust.com>",
+  "homepage": "https://croviatrust.com/seal",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/croviatrust/crovia-seal.git",
+    "directory": "receipt/javascript"
+  },
+  "bugs": {
+    "url": "https://github.com/croviatrust/crovia-seal/issues"
+  },
+  "keywords": [
+    "crovia",
+    "seal",
+    "continuity",
+    "receipt",
+    "ed25519",
+    "provenance",
+    "canonicalization",
+    "ai",
+    "transparency",
+    "csc-1",
+    "rfc-8785"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/browser.js",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser.js"
+    }
+  },
+  "bin": {
+    "crovia-receipt": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --minify --target=es2022 && esbuild src/index.ts --bundle --format=esm --target=es2022 --minify --outfile=dist/browser.js --platform=browser --log-level=warning && esbuild src/cli.ts --bundle --format=esm --target=es2022 --platform=node --outfile=dist/cli.js --banner:js='#!/usr/bin/env node' --external:@noble/ed25519 --external:@noble/hashes",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "size": "npm run build && du -sh dist/*",
+    "prepublishOnly": "npm run test && npm run build"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.1.0",
+    "@noble/hashes": "^1.4.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "@types/node": "^20.11.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
