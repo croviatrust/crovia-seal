@@ -4,6 +4,22 @@ All notable changes to Crovia Seal are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-09-19
+
+### Changed
+
+- **seal-svc issues real Seals.** `integrations/seal-svc` now emits `crovia.seal.v1` objects through the reference implementation (`emit_seal`), self-verifies each Seal before persisting it, and keeps one hash chain per issuer key (`chain.prev_seal_hash`, `chain.sequence`). The old service signed an ad-hoc object (`seal_version: "crovia-seal-v1"`, `sl_` ids, `"Ed25519:<hex>"` signature) that no verifier accepted. Request shape is unchanged (`output_text`, `input_hash`, `generator`); `input_text` and `modality` are new optional fields; `input_hash` now requires `input_len`. Old objects remain retrievable and are flagged `legacy: true`.
+- **`sdk/` is now `receipt/`.** The lightweight client-side receipt (`crovia.receipt.v1`) was published as `crovia-seal` 0.1.0 (PyPI) and `@crovia/seal` 0.1.0 (npm), which made a Receipt look like a Seal. The packages are renamed `crovia-receipt` / `@crovia/receipt` 0.2.0 (import `crovia_receipt`). Wire format unchanged. The name `crovia-seal` belongs to the reference implementation only.
+- README rewritten around the single format, the issuers in production and the canonical Crovia surfaces. `llms.txt` no longer hard-codes headline figures; it points at the live endpoints.
+
+### Removed
+
+- `sdk/python/crovia_seal/` + `setup.py`: a second, PyNaCl-based `crovia-verify` CLI for a third seal shape (`sl_` ids) that no live surface produces.
+
+### Fixed
+
+- `SyntaxWarning: invalid escape sequence` in `crovia_seal.canonical` under Python 3.12.
+
 ## [0.5.0] - 2026-04-18
 
 ### Added
