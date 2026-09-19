@@ -1,5 +1,7 @@
 """
-crovia-seal — Immutable continuity receipts for evolving AI systems.
+crovia-receipt — Crovia Receipt (crovia.receipt.v1): lightweight continuity receipts for AI outputs.
+
+A Receipt is NOT a Crovia Seal (crovia.seal.v1). For Seals use the `crovia-seal` package.
 
 Public API:
     seal(payload, *, key=None, prev_receipt=None, payload_type=None) -> dict
@@ -10,21 +12,21 @@ Public API:
     canonicalize(value)                                               -> bytes
 
 Wire format: crovia.receipt.v1 (Ed25519 + CSC-1 canonical JSON).
-Cross-language byte identity with the @crovia/seal JavaScript SDK is
+Cross-language byte identity with the @crovia/receipt JavaScript SDK is
 part of the conformance contract.
 """
-from crovia_seal.canonical import (
+from crovia_receipt.canonical import (
     CanonicalizationError,
     canonicalize,
 )
-from crovia_seal.keys import (
+from crovia_receipt.keys import (
     KeyPair,
     generate_key,
     public_from_private,
     sign_bytes,
     verify_bytes,
 )
-from crovia_seal.seal import (
+from crovia_receipt.seal import (
     DOMAIN_BYTES,
     DOMAIN_STRING,
     PAYLOAD_ALG,
@@ -34,12 +36,12 @@ from crovia_seal.seal import (
     seal,
     validate_receipt_shape,
 )
-from crovia_seal.verify import (
+from crovia_receipt.verify import (
     VerifyResult,
     verify,
     verify_chain,
 )
-from crovia_seal.register import (
+from crovia_receipt.register import (
     RegisterResult,
     register,
 )

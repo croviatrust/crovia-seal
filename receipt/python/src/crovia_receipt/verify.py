@@ -5,9 +5,9 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from crovia_seal.canonical import CanonicalizationError, canonicalize
-from crovia_seal.keys import verify_bytes
-from crovia_seal.seal import compute_payload, validate_receipt_shape
+from crovia_receipt.canonical import CanonicalizationError, canonicalize
+from crovia_receipt.keys import verify_bytes
+from crovia_receipt.seal import compute_payload, validate_receipt_shape
 
 
 def _sha256_prefixed(data: bytes) -> str:

@@ -1,5 +1,5 @@
 /**
- * @crovia/seal — Immutable continuity receipts for evolving AI systems.
+ * @crovia/receipt — Immutable continuity receipts for evolving AI systems.
  *
  * Public API:
  *   seal(payload, opts?)            → Receipt

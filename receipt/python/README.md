@@ -1,27 +1,36 @@
-# crovia-seal
+# crovia-receipt
+
+> **This is Crovia Receipt (`crovia.receipt.v1`), not Crovia Seal.**
+> A Receipt is a lightweight, client-side signed statement about an AI output: useful for continuity and
+> self-attestation, verifiable offline. It is **not** a `crovia.seal.v1` object, does not verify with
+> `verify_seal`, and is not accepted by the Crovia registry. For Seals (the standard specified in
+> [SPEC.md](../../SPEC.md) and the IETF draft) use the reference implementation:
+> `pip install crovia-seal` / `@crovia/seal-reference`, or the free issuer at `https://seal.croviatrust.com/v1/sign`.
+>
+> Previously published as `crovia-seal` 0.1.0 (PyPI) and `@crovia/seal` 0.1.0 (npm).
 
 **Immutable continuity receipts for evolving AI systems.**
 
 Tiny, offline, cryptographic primitive. Sign any JSON payload, get a verifiable receipt. No network call required.
 
-Byte-identical with the JavaScript SDK [`@crovia/seal`](https://www.npmjs.com/package/@crovia/seal) — receipts produced in either language verify in both.
+Byte-identical with the JavaScript SDK [`@crovia/receipt`](https://www.npmjs.com/package/@crovia/receipt) — receipts produced in either language verify in both.
 
 ## Install
 
 ```bash
-pip install crovia-seal
+pip install crovia-receipt
 ```
 
 To enable the optional public-substrate `register()` call:
 
 ```bash
-pip install "crovia-seal[register]"
+pip install "crovia-receipt[register]"
 ```
 
 ## Use
 
 ```python
-from crovia_seal import seal, verify, generate_key
+from crovia_receipt import seal, verify, generate_key
 
 key = generate_key()
 
@@ -51,14 +60,14 @@ r1 = seal({"version": 1, "content": "..."}, key=key)
 r2 = seal({"version": 2, "content": "..."}, key=key, prev_receipt=r1)
 r3 = seal({"version": 3, "content": "..."}, key=key, prev_receipt=r2)
 
-from crovia_seal import verify_chain
+from crovia_receipt import verify_chain
 result = verify_chain([r1, r2, r3])
 ```
 
 ## Optional: publish to the substrate
 
 ```python
-from crovia_seal import register
+from crovia_receipt import register
 
 ack = register(receipt)  # POSTs to https://croviatrust.com/api/anchor
 print(ack.accepted, ack.anchor_id)
@@ -94,5 +103,5 @@ Apache-2.0.
 ## Spec & reference impls
 
 - Spec: <https://croviatrust.com/seal>
-- JavaScript equivalent: `npm install @crovia/seal`
+- JavaScript equivalent: `npm install @crovia/receipt`
 - Source: <https://github.com/croviatrust/crovia-seal/tree/main/sdk/python>

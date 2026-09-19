@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 
 DEFAULT_ENDPOINT = "https://croviatrust.com"
 DEFAULT_TIMEOUT_SEC = 10.0
-USER_AGENT = "crovia-seal-py/0.1.0"
+USER_AGENT = "crovia-receipt-py/0.2.0"
 
 
 @dataclass
@@ -43,7 +43,7 @@ def register(
         return RegisterResult(
             accepted=False,
             status=0,
-            error="missing optional dependency 'requests'; install crovia-seal[register]",
+            error="missing optional dependency 'requests'; install crovia-receipt[register]",
         )
 
     url = endpoint.rstrip("/") + "/api/anchor"

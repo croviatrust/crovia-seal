@@ -7,7 +7,7 @@ Run:  python examples/register_live.py
 import sys
 import time
 
-from crovia_seal import generate_key, register, seal, verify
+from crovia_receipt import generate_key, register, seal, verify
 
 
 def main() -> int:

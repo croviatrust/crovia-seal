@@ -1,7 +1,7 @@
 """
 seal() — produce a continuity receipt over an arbitrary JSON payload.
 
-Receipt format: `crovia.receipt.v1`. Byte-identical with the @crovia/seal
+Receipt format: `crovia.receipt.v1`. Byte-identical with the @crovia/receipt
 JavaScript SDK: a receipt produced by either implementation verifies
 identically in both.
 
@@ -19,8 +19,8 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, TypedDict
 
-from crovia_seal.canonical import canonicalize
-from crovia_seal.keys import KeyPair, generate_key, sign_bytes
+from crovia_receipt.canonical import canonicalize
+from crovia_receipt.keys import KeyPair, generate_key, sign_bytes
 
 RECEIPT_VERSION = "crovia.receipt.v1"
 DOMAIN_STRING = "CROVIA-RECEIPT-v1"
@@ -171,7 +171,7 @@ def seal(
 
     Returns:
         A dict-shaped receipt (compatible with JSON serialization). Identical
-        in structure to what `@crovia/seal` produces in JavaScript.
+        in structure to what `@crovia/receipt` produces in JavaScript.
     """
     if key is None:
         key = generate_key()

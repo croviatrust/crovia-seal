@@ -1,7 +1,7 @@
 """End-to-end tests for seal/verify (Python SDK)."""
 import pytest
 
-from crovia_seal import (
+from crovia_receipt import (
     generate_key,
     seal,
     validate_receipt_shape,

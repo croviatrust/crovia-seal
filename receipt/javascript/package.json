@@ -1,14 +1,14 @@
 {
-  "name": "@crovia/seal",
-  "version": "0.1.0",
-  "description": "Immutable continuity receipts for evolving AI systems. Offline cryptographic primitive — Ed25519 + canonical JSON, no network required.",
+  "name": "@crovia/receipt",
+  "version": "0.2.0",
+  "description": "Crovia Receipt (crovia.receipt.v1): lightweight client-side continuity receipts for AI outputs. Not a Crovia Seal; for crovia.seal.v1 use @crovia/seal-reference.",
   "license": "Apache-2.0",
   "author": "Crovia Trust <https://croviatrust.com>",
   "homepage": "https://croviatrust.com/seal",
   "repository": {
     "type": "git",
     "url": "https://github.com/croviatrust/crovia-seal.git",
-    "directory": "sdk/javascript"
+    "directory": "receipt/javascript"
   },
   "bugs": {
     "url": "https://github.com/croviatrust/crovia-seal/issues"
@@ -41,7 +41,7 @@
     }
   },
   "bin": {
-    "crovia-seal": "./dist/cli.js"
+    "crovia-receipt": "./dist/cli.js"
   },
   "files": [
     "dist",

@@ -1,5 +1,5 @@
 /**
- * Core types for @crovia/seal.
+ * Core types for @crovia/receipt.
  */
 
 /** A signed continuity receipt over an arbitrary JSON payload. */

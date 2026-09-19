@@ -1,4 +1,13 @@
-# @crovia/seal
+# @crovia/receipt
+
+> **This is Crovia Receipt (`crovia.receipt.v1`), not Crovia Seal.**
+> A Receipt is a lightweight, client-side signed statement about an AI output: useful for continuity and
+> self-attestation, verifiable offline. It is **not** a `crovia.seal.v1` object, does not verify with
+> `verify_seal`, and is not accepted by the Crovia registry. For Seals (the standard specified in
+> [SPEC.md](../../SPEC.md) and the IETF draft) use the reference implementation:
+> `pip install crovia-seal` / `@crovia/seal-reference`, or the free issuer at `https://seal.croviatrust.com/v1/sign`.
+>
+> Previously published as `crovia-seal` 0.1.0 (PyPI) and `@crovia/seal` 0.1.0 (npm).
 
 **Immutable continuity receipts for evolving AI systems.**
 
@@ -7,13 +16,13 @@ Tiny, offline, cryptographic primitive. Sign any JSON payload, get a verifiable 
 ## Install
 
 ```bash
-npm install @crovia/seal
+npm install @crovia/receipt
 ```
 
 ## Use
 
 ```ts
-import { seal, verify, generateKeySync } from "@crovia/seal";
+import { seal, verify, generateKeySync } from "@crovia/receipt";
 
 const key = generateKeySync();
 
@@ -44,14 +53,14 @@ const r2 = await seal({ version: 2, content: "..." }, { key, prevReceipt: r1 });
 const r3 = await seal({ version: 3, content: "..." }, { key, prevReceipt: r2 });
 
 // Verify the whole chain.
-import { verifyChain } from "@crovia/seal";
+import { verifyChain } from "@crovia/receipt";
 const result = await verifyChain([r1, r2, r3]);
 ```
 
 ## Optional: publish to the substrate
 
 ```ts
-import { register } from "@crovia/seal";
+import { register } from "@crovia/receipt";
 
 const r = await seal(payload, { key });
 const ack = await register(r); // posts to https://croviatrust.com/api/anchor

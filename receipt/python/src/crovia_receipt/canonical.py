@@ -7,7 +7,7 @@ Strict subset of RFC 8785 (JCS):
   - Integers only (floats forbidden in signed payloads)
   - No insignificant whitespace
 
-Output is byte-identical to the JavaScript SDK (@crovia/seal). Any
+Output is byte-identical to the JavaScript SDK (@crovia/receipt). Any
 divergence between the two implementations is a bug.
 """
 from __future__ import annotations
@@ -119,7 +119,7 @@ def _serialize(value: Any) -> str:
 def canonicalize(value: Any) -> bytes:
     """Canonicalize a JSON-compatible Python value to UTF-8 bytes.
 
-    Output is deterministic and byte-identical to the @crovia/seal
+    Output is deterministic and byte-identical to the @crovia/receipt
     JavaScript SDK for every shared input.
     """
     return _serialize(value).encode("utf-8")

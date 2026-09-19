@@ -1,5 +1,5 @@
 """
-Canonicalization byte-identity vs the @crovia/seal JavaScript SDK.
+Canonicalization byte-identity vs the @crovia/receipt JavaScript SDK.
 
 These fixtures are the SAME ones used in JS at
 `sdk/javascript/test/cross-language.test.ts`. If a fixture's expected
@@ -7,7 +7,7 @@ bytes change here, they MUST change there too.
 """
 import pytest
 
-from crovia_seal.canonical import CanonicalizationError, canonicalize
+from crovia_receipt.canonical import CanonicalizationError, canonicalize
 
 
 # (name, value, expected utf-8 bytes as decoded string)

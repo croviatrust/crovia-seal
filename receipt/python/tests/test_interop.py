@@ -4,7 +4,7 @@ must verify in both. This test is the load-bearing piece of the
 "byte-identity" promise.
 
 Two checks:
-  1. Verify a known receipt produced offline by `@crovia/seal` (JS).
+  1. Verify a known receipt produced offline by `@crovia/receipt` (JS).
   2. Round-trip: seal in Python, signing payload bytes must match what
      the JS SDK would produce for the same unsigned receipt.
 """
@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from crovia_seal import (
+from crovia_receipt import (
     canonicalize,
     compute_payload,
     seal,
@@ -41,7 +41,7 @@ JS_RECEIPT = {
 
 
 def test_python_verifies_js_produced_receipt_shape():
-    """The receipt produced by @crovia/seal passes our schema check."""
+    """The receipt produced by @crovia/receipt passes our schema check."""
     assert validate_receipt_shape(JS_RECEIPT) is None
 
 

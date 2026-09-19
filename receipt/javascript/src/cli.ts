@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * Crovia Seal CLI — verify any seal from the command line
- * Usage:  npx @crovia/seal verify sl_xxx
- *         npx @crovia/seal info sl_xxx
+ * Usage:  npx @crovia/receipt verify sl_xxx
+ *         npx @crovia/receipt info sl_xxx
  */
 
 const SEAL_API = 'https://seal.croviatrust.com/v1/seal/';
@@ -101,16 +101,16 @@ async function main() {
 
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     console.log(`
-${BOLD}@crovia/seal${RESET} — Cryptographic AI provenance
+${BOLD}@crovia/receipt${RESET} — Cryptographic AI provenance
 
 ${BOLD}Usage:${RESET}
-  npx @crovia/seal verify <seal_id>     Verify a seal
-  npx @crovia/seal info <seal_id>       Show seal details (JSON)
-  npx @crovia/seal badge <seal_id>      Get README badge markdown
+  npx @crovia/receipt verify <seal_id>     Verify a seal
+  npx @crovia/receipt info <seal_id>       Show seal details (JSON)
+  npx @crovia/receipt badge <seal_id>      Get README badge markdown
 
 ${BOLD}Examples:${RESET}
-  npx @crovia/seal verify sl_8b8b5e3b6d851d7214e8129ec216f0497657dd39
-  npx @crovia/seal badge sl_8b8b5e3b6d851d7214e8129ec216f0497657dd39
+  npx @crovia/receipt verify sl_8b8b5e3b6d851d7214e8129ec216f0497657dd39
+  npx @crovia/receipt badge sl_8b8b5e3b6d851d7214e8129ec216f0497657dd39
 
 ${DIM}https://croviatrust.com${RESET}
 `);

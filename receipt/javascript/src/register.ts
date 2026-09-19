@@ -47,7 +47,7 @@ export async function register(
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "user-agent": "crovia-seal/0.1.0",
+        "user-agent": "crovia-receipt/0.2.0",
       },
       body: JSON.stringify({ receipt }),
       signal: controller.signal,
