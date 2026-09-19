@@ -2,8 +2,11 @@
 Crovia Seal Service v1 — public sealing + retrieval endpoint.
 
 POST /v1/sign      -> sign an AI output, return a conformant crovia.seal.v1 Seal
+                      (plaintext or privacy mode: client-side sha256 digests)
 GET  /v1/seal/{id} -> retrieve a previously-issued Seal by its seal_id
 GET  /v1/stats     -> public counters (total seals, last seal time, chain head)
+GET  /v1/wall      -> public log, newest first
+GET  /v1/anchor/latest -> latest OpenTimestamps anchor of the log
 GET  /health       -> 200 if running
 
 Every Seal issued here is a `crovia.seal.v1` object produced by the reference
@@ -114,12 +117,16 @@ class Generator(BaseModel):
 
 
 class SignRequest(BaseModel):
-    """Either `input_text` (preferred) or `input_hash` + `input_len` must be given."""
-    model_config = ConfigDict(extra="forbid")
-    output_text: str = Field(min_length=1, max_length=200_000)
+    """Two modes per side. Plaintext: `output_text` / `input_text` (the service hashes them).
+    Privacy: `output_hash` + `output_len` / `input_hash` + `input_len` (the service never sees
+    the text). `output_length` is accepted as an alias of `output_len` for pre-0.6 clients."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    output_text: Optional[str] = Field(default=None, min_length=1, max_length=200_000)
+    output_hash: Optional[str] = Field(default=None, pattern=r"^sha256:[0-9a-f]{64}$")
+    output_len: Optional[int] = Field(default=None, ge=0, le=10_000_000, alias="output_length")
     input_text: Optional[str] = Field(default=None, max_length=200_000)
     input_hash: Optional[str] = Field(default=None, pattern=r"^sha256:[0-9a-f]{64}$")
-    input_len: Optional[int] = Field(default=None, ge=0)
+    input_len: Optional[int] = Field(default=None, ge=0, le=10_000_000)
     generator: Generator
     modality: str = "text"
     issuer_app: Optional[str] = Field(default=None, max_length=200)
@@ -183,41 +190,34 @@ def sign(req: SignRequest, request: Request):
     if req.modality not in ALLOWED_MODALITIES:
         raise HTTPException(status_code=422, detail=f"modality must be one of {sorted(ALLOWED_MODALITIES)}")
 
-    output_bytes = req.output_text.encode("utf-8")
-    if req.input_text is not None:
-        input_bytes = req.input_text.encode("utf-8")
-        input_hash_override = None
-    elif req.input_hash is not None and req.input_len is not None:
-        input_bytes = b""
-        input_hash_override = (req.input_hash, req.input_len)
+    if req.output_text is not None:
+        out_hash = "sha256:" + hashlib.sha256(req.output_text.encode("utf-8")).hexdigest()
+        out_len = len(req.output_text.encode("utf-8"))
+        privacy = "server_hash"
+    elif req.output_hash is not None:
+        out_hash, out_len = req.output_hash, (req.output_len if req.output_len is not None else 0)
+        privacy = "client_hash"
     else:
-        raise HTTPException(status_code=422, detail="provide input_text, or input_hash together with input_len")
+        raise HTTPException(status_code=422, detail="provide output_text, or output_hash (privacy mode)")
 
-    checks: Dict[str, Any] = {}
+    if req.input_text is not None:
+        in_hash = "sha256:" + hashlib.sha256(req.input_text.encode("utf-8")).hexdigest()
+        in_len = len(req.input_text.encode("utf-8"))
+    elif req.input_hash is not None:
+        in_hash, in_len = req.input_hash, (req.input_len if req.input_len is not None else 0)
+    else:
+        raise HTTPException(status_code=422, detail="provide input_text, or input_hash (privacy mode)")
+
+    checks: Dict[str, Any] = {"privacy_mode": privacy}
     if req.issuer_app:
         checks["issuer_app"] = req.issuer_app
 
     prev_hash = compute_seal_hash(CHAIN_HEAD) if CHAIN_HEAD else None
     sequence = CHAIN_HEAD["chain"]["sequence"] + 1 if CHAIN_HEAD else 0
 
-    seal = emit_seal(
-        issuer_key=ISSUER_KEY,
-        input_bytes=input_bytes,
-        output_bytes=output_bytes,
-        modality=req.modality,
-        generator_id=req.generator.id,
-        generator_version=req.generator.version,
-        generator_weights_hash=req.generator.weights_hash,
-        generator_params=req.generator.params,
-        sequence=sequence,
-        prev_seal_hash=prev_hash,
-        checks=checks or None,
-    )
-    if input_hash_override is not None:
-        # The client supplied a pre-computed input digest: re-emit with it so the
-        # signature covers the client's values (emit_seal hashes bytes itself).
-        seal = _reemit_with_input_digest(seal, *input_hash_override, sequence, prev_hash, checks or None,
-                                         req, output_bytes)
+    subject = {"input_hash": in_hash, "output_hash": out_hash, "input_len": in_len,
+               "output_len": out_len, "modality": req.modality}
+    seal = _emit_with_subject(subject, req, sequence, prev_hash, checks)
 
     result = verify_seal(seal)
     if not result.ok:  # defence in depth: never persist a Seal we cannot verify
@@ -231,25 +231,53 @@ def sign(req: SignRequest, request: Request):
                         verify_url="https://croviatrust.com/registry/seal/verify/")
 
 
-def _reemit_with_input_digest(seal: dict, input_hash: str, input_len: int, sequence: int,
-                              prev_hash: Optional[str], checks: Optional[dict], req: SignRequest,
-                              output_bytes: bytes) -> dict:
-    """Sign a Seal whose subject.input_* come from the client (hash-only inputs)."""
+def _emit_with_subject(subject: dict, req: SignRequest, sequence: int, prev_hash: Optional[str],
+                       checks: dict) -> dict:
+    """Emit a Seal whose subject digests/lengths are given explicitly.
+
+    `emit_seal` hashes raw bytes itself; in privacy mode the service only holds the client's
+    digests, so the Seal is built with placeholder bytes, the subject is replaced, and the
+    payload is re-signed. Everything else (issuer, generator, timestamp, chain, checks) is
+    exactly what the reference produces.
+    """
     from crovia_seal.constants import CANON_ID, PAYLOAD_HASH_ALG, SIGNATURE_ALG, SIGNATURE_DOMAIN
     from crovia_seal.seal import _validate_structure, compute_payload
+    seal = emit_seal(
+        issuer_key=ISSUER_KEY, input_bytes=b"", output_bytes=b"", modality=req.modality,
+        generator_id=req.generator.id, generator_version=req.generator.version,
+        generator_weights_hash=req.generator.weights_hash, generator_params=req.generator.params,
+        sequence=sequence, prev_seal_hash=prev_hash, checks=checks,
+    )
     unsigned = {k: v for k, v in seal.items() if k != "signature"}
-    unsigned["subject"] = {
-        "input_hash": input_hash,
-        "output_hash": "sha256:" + hashlib.sha256(output_bytes).hexdigest(),
-        "input_len": input_len,
-        "output_len": len(output_bytes),
-        "modality": req.modality,
-    }
+    unsigned["subject"] = subject
     sig = ISSUER_KEY.sign(compute_payload(unsigned))
     unsigned["signature"] = {"alg": SIGNATURE_ALG, "canon": CANON_ID, "domain": SIGNATURE_DOMAIN,
                              "payload_hash_alg": PAYLOAD_HASH_ALG, "sig_hex": sig.hex()}
     _validate_structure(unsigned)
     return unsigned
+
+
+@app.get("/v1/wall")
+def wall(limit: int = 100):
+    """Public log: the most recent conformant Seals, newest first. Never plaintext."""
+    limit = max(1, min(int(limit), 500))
+    seals = [s for s in INDEX.values() if _is_conformant(s)]
+    seals.sort(key=lambda s: s["timestamp"]["emitted_at"], reverse=True)
+    return {"count": len(seals), "limit": limit, "seal_version": SEAL_VERSION, "seals": seals[:limit]}
+
+
+@app.get("/v1/anchor/latest")
+def anchor_latest():
+    """Metadata about the most recent OpenTimestamps anchor of the seal log (ots_anchor.py, same dir)."""
+    try:
+        import sys
+        here = str(Path(__file__).resolve().parent)
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        from ots_anchor import latest_anchor  # type: ignore
+        return latest_anchor()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/v1/seal/{seal_id}")

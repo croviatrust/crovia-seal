@@ -98,3 +98,25 @@ def test_reload_restores_chain_head_and_flags_legacy(svc):
     stats = c.get("/v1/stats").json()
     assert stats["legacy_seals"] == 1 and stats["total_seals"] == 1
     assert os.path.exists(svc.LOG_PATH)
+
+
+def test_privacy_mode_signs_client_digests(svc):
+    c = TestClient(svc.app)
+    oh, ih = "sha256:" + "cd" * 32, "sha256:" + "ef" * 32
+    r = c.post("/v1/sign", json={"output_hash": oh, "output_length": 42, "input_hash": ih, "input_len": 7,
+                                 "generator": GEN})
+    assert r.status_code == 200, r.text
+    seal = r.json()["seal"]
+    assert seal["subject"] == {"input_hash": ih, "output_hash": oh, "input_len": 7, "output_len": 42,
+                               "modality": "text"}
+    assert seal["checks"]["privacy_mode"] == "client_hash"
+    assert verify_seal(seal).ok
+
+
+def test_wall_lists_conformant_seals_newest_first(svc):
+    c = TestClient(svc.app)
+    ids = [c.post("/v1/sign", json={"output_text": t, "input_text": "q", "generator": GEN}).json()["seal_id"]
+           for t in ("a", "b", "c")]
+    w = c.get("/v1/wall?limit=2").json()
+    assert w["count"] == 3 and len(w["seals"]) == 2
+    assert w["seals"][0]["seal_id"] == ids[-1]
