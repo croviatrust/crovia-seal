@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you implement or cite the Crovia Seal, please cite this repository and the Internet-Draft."
+title: "Crovia Seal: tamper-evident receipts for AI outputs (crovia.seal.v1)"
+type: software
+authors:
+  - name: "Crovia Trust"
+    email: info@croviatrust.com
+    website: https://croviatrust.com
+repository-code: https://github.com/croviatrust/crovia-seal
+url: https://croviatrust.com/registry/seal/
+license: Apache-2.0
+version: 0.5.0
+date-released: 2026-09-19
+keywords:
+  - AI provenance
+  - cryptographic receipts
+  - Ed25519
+  - canonical JSON
+  - IETF Internet-Draft
+references:
+  - type: standard
+    title: "The Crovia Seal (draft-crovia-seal)"
+    url: https://datatracker.ietf.org/doc/draft-crovia-seal/
+    authors:
+      - name: "Crovia Trust"

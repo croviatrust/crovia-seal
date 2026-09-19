@@ -23,7 +23,9 @@ payload with the domain separator `CROVIA-SEAL-v1`.
  "domain":"CROVIA-SEAL-v1","payload_hash_alg":"sha256","sig_hex":"…"}}
 ```
 
-Verify one offline, in three lines, with the reference package:
+Verify one offline, in three lines, with the reference package
+(`pip install -e reference/python`; the `crovia-seal` name on PyPI still carries
+the 0.1.0 receipt SDK until 0.5.x is published):
 
 ```python
 from crovia_seal import verify_seal
@@ -38,7 +40,8 @@ Or paste it into the public verifier: https://croviatrust.com/registry/seal/veri
 | Issuer | id | What it seals |
 |---|---|---|
 | [Causari](https://github.com/croviatrust/causari) | `urn:crovia:seal-issuer:causari` | Code changes made by AI agents (production, Rust) |
-| Crovia Trust | `urn:crovia:seal-issuer:crovia-trust` | Ledger batches, LACUNA records, TACET silence proofs |
+| Crovia Trust | `urn:crovia:seal-issuer:crovia-trust` | Ledger batches, LACUNA certificates |
+| [TACET](https://github.com/croviatrust/countersign) | `urn:crovia:seal-issuer:tacet` | Silence proofs of the live disclosure log (production, hourly) |
 | You | your URN | Anything: run `crovia_seal.emit_seal(...)` with your key |
 
 Issuer keys are published in the trust root: https://seal.croviatrust.com/trust-root.json
@@ -63,8 +66,9 @@ ops/                      Deployment scripts for the issuer service
 `@crovia/seal` 0.1.0 on npm. Those packages produce `crovia.receipt.v1`
 objects, which are useful but are not Seals and do not verify with
 `verify_seal`. They are republished as `crovia-receipt` / `@crovia/receipt`;
-the names `crovia-seal` and `@crovia/seal` now carry the reference
-implementation, so that `pip install crovia-seal` gives you `verify_seal`.
+the names `crovia-seal` and `@crovia/seal` are reserved for the reference
+implementation (0.5.x), so that `pip install crovia-seal` will give you
+`verify_seal`. Until that upload happens, install the reference from source.
 
 ## Conformance
 
@@ -88,7 +92,8 @@ input, out-of-range integers, non-genesis chains without `prev_seal_hash`.
 
 | Surface | URL |
 |---|---|
-| Ledger and registry | https://croviatrust.com/registry/ |
+| TACET live log (every proof is a Seal) | https://croviatrust.com/registry/tacet/ |
+| Registry hub | https://croviatrust.com/registry/ |
 | LACUNA (absence records) | https://croviatrust.com/registry/lacuna/ |
 | Crovia Seal: spec, verifier, log | https://croviatrust.com/registry/seal/ |
 | Issuer trust root | https://seal.croviatrust.com/trust-root.json |
