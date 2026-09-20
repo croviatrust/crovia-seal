@@ -139,6 +139,23 @@ jobs:
           npm ci
           npm test
 
+  typescript-reference:
+    name: "TypeScript reference (@crovia/seal) build + conformance"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Build and test against the committed vectors
+        working-directory: reference/typescript
+        run: |
+          npm ci
+          npm run build
+          npm test
+
   spec-lint:
     name: "Spec & draft sanity"
     runs-on: ubuntu-latest

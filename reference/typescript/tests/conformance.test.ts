@@ -89,7 +89,11 @@ runOrSkip('CSC-1 canonicalization conformance', () => {
 runOrSkip('Signed seal conformance', () => {
   const issuerId = readFileSync(resolve(VECTOR_DIR, 'issuer.id.txt'), 'utf-8').trim();
   const publicHexExpected = readHex('issuer.public.hex');
-  const privateHex = readHex('issuer.private.hex');
+  // The conformance issuer's seed is public by design (DEMO ONLY, see conformance/README.md);
+  // the file is gitignored so a checkout without regenerated vectors still runs the suite.
+  const privateHex = existsSync(resolve(VECTOR_DIR, 'issuer.private.hex'))
+    ? readHex('issuer.private.hex')
+    : 'deadbeef'.repeat(8);
 
   it('loaded issuer matches expected public key', () => {
     const key = loadIssuerKey(issuerId, privateHex);

@@ -250,7 +250,7 @@ def verify_anchor_signature(anchor: BeaconAnchor, chain: BeaconChainInfo) -> boo
 # ---------------------------------------------------------------------------
 
 def _http_get_json(url: str, timeout_seconds: float) -> Dict[str, Any]:
-    req = Request(url, headers={"User-Agent": "crovia-seal/0.5.0 (+beacon)"})
+    req = Request(url, headers={"User-Agent": "crovia-seal/0.6.0 (+beacon)"})
     with urlopen(req, timeout=timeout_seconds) as resp:  # noqa: S310 - constant scheme
         raw = resp.read()
     return json.loads(raw.decode("utf-8"))

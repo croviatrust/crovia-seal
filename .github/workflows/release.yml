@@ -92,8 +92,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "24"
+      # Trusted publishing (OIDC) lives in the npm CLI, not in Node: it needs npm >= 11.5.1. No
+      # registry-url here on purpose: it would export an empty NODE_AUTH_TOKEN and npm would try token
+      # auth instead of the OIDC exchange.
+      - name: Ensure npm supports OIDC trusted publishing
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
       - run: npm ci
       - run: npm run build
       - run: npm publish --access public --provenance

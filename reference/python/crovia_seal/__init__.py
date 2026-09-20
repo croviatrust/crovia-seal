@@ -63,7 +63,7 @@ from crovia_seal.beacon import (
     verify_round_online,
 )
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "SEAL_VERSION",
