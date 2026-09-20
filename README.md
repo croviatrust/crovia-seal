@@ -6,6 +6,8 @@
 
 [![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--crovia--seal--01-1ec5ff?style=flat-square)](https://datatracker.ietf.org/doc/draft-crovia-seal/)
 [![Conformance](https://github.com/croviatrust/crovia-seal/actions/workflows/conformance.yml/badge.svg)](https://github.com/croviatrust/crovia-seal/actions/workflows/conformance.yml)
+[![PyPI](https://img.shields.io/pypi/v/crovia-seal?style=flat-square&label=PyPI%20crovia-seal&color=1ec5ff)](https://pypi.org/project/crovia-seal/)
+[![npm](https://img.shields.io/npm/v/%40crovia%2Fseal?style=flat-square&label=npm%20%40crovia%2Fseal&color=1ec5ff)](https://www.npmjs.com/package/@crovia/seal)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
 [![Spec: CC0](https://img.shields.io/badge/Spec-CC0-lightgrey.svg?style=flat-square)](https://creativecommons.org/publicdomain/zero/1.0/)
 
@@ -28,8 +30,7 @@ payload with the domain separator `CROVIA-SEAL-v1`.
 ```
 
 Verify one offline, in three lines, with the reference package
-(`pip install -e reference/python`; the `crovia-seal` name on PyPI still carries
-the 0.1.0 receipt SDK until 0.5.x is published):
+(`pip install crovia-seal`, or `npm install @crovia/seal` for `verifySeal`):
 
 ```python
 from crovia_seal import verify_seal
@@ -66,13 +67,13 @@ docs/                     Threat model
 ops/                      Deployment scripts for the issuer service
 ```
 
-`receipt/` was previously published as `crovia-seal` 0.1.0 on PyPI and
-`@crovia/seal` 0.1.0 on npm. Those packages produce `crovia.receipt.v1`
-objects, which are useful but are not Seals and do not verify with
-`verify_seal`. They are republished as `crovia-receipt` / `@crovia/receipt`;
-the names `crovia-seal` and `@crovia/seal` are reserved for the reference
-implementation (0.5.x), so that `pip install crovia-seal` will give you
-`verify_seal`. Until that upload happens, install the reference from source.
+`crovia-seal` 0.1.0 (PyPI) and `@crovia/seal` 0.1.0 (npm) were the lightweight
+receipt SDK, which produces `crovia.receipt.v1` objects: useful, but not Seals,
+and they do not verify with `verify_seal`. That SDK lives on as
+`crovia-receipt` / `@crovia/receipt`. From 0.6.0 the names `crovia-seal` and
+`@crovia/seal` carry the reference implementation, published from
+`release.yml` through Trusted Publishing (PyPI attestations, npm provenance);
+no publishing token exists anywhere. Do not pin `crovia-seal==0.1.0`.
 
 ## Conformance
 
@@ -96,7 +97,7 @@ input, out-of-range integers, non-genesis chains without `prev_seal_hash`.
 
 - Specification: v0.5, frozen for `crovia.seal.v1`; changes go to `v2`.
 - Internet-Draft: `draft-crovia-seal-01` submitted.
-- Reference: Python 0.5.x, TypeScript 0.5.x.
+- Reference: Python 0.6.x on PyPI (`crovia-seal`), TypeScript 0.6.x on npm (`@crovia/seal`), released together from one tag.
 - Production: Causari (since 2026-05), Crovia Trust issuer service (`seal.croviatrust.com`).
 
 ## Crovia surfaces

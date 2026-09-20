@@ -6,6 +6,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.6.0] - 2026-09-20
 
+### Added
+
+- **Published reference implementations.** `crovia-seal` 0.6.0 on PyPI and `@crovia/seal` 0.6.0 on npm, both built from tag `v0.6.0` by `release.yml` through Trusted Publishing (OIDC; PyPI attestations, npm provenance). The `check` job refuses to publish unless the tag equals both package versions and both test suites pass.
+- CI builds and tests `reference/typescript` against the committed vectors (the signed-seal suite previously never ran on a clean checkout because `issuer.private.hex` is gitignored; the test now falls back to the published demo seed).
+- The specification page <https://croviatrust.com/registry/seal/spec/> serves the text inline, mirrors `draft-crovia-seal-01`, and publishes every conformance file with a SHA-256 `manifest.json`; `conformance/README.md` describes the real vector layout.
+
 ### Changed
 
 - **seal-svc issues real Seals.** `integrations/seal-svc` now emits `crovia.seal.v1` objects through the reference implementation (`emit_seal`), self-verifies each Seal before persisting it, and keeps one hash chain per issuer key (`chain.prev_seal_hash`, `chain.sequence`). The old service signed an ad-hoc object (`seal_version: "crovia-seal-v1"`, `sl_` ids, `"Ed25519:<hex>"` signature) that no verifier accepted. Request shape is unchanged (`output_text`, `input_hash`, `generator`); `input_text` and `modality` are new optional fields; `input_hash` now requires `input_len`. Old objects remain retrievable and are flagged `legacy: true`.
