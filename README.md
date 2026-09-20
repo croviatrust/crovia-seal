@@ -78,8 +78,15 @@ implementation (0.5.x), so that `pip install crovia-seal` will give you
 
 ```bash
 pip install -e reference/python
-python3 conformance/run_conformance.py     # every vector must pass
+python3 conformance/run_conformance.py     # ALL 41 TESTS PASSED
 ```
+
+The same vectors are published at
+[croviatrust.com/registry/seal/spec/](https://croviatrust.com/registry/seal/spec/#vectors)
+together with the canonical text and the Internet-Draft, with a `manifest.json`
+of SHA-256 hashes; each one opens in the
+[browser verifier](https://croviatrust.com/registry/seal/verify/) with a single
+click, including the ones that must fail.
 
 CI runs the suite on every push and weekly. A verifier is conformant only if
 it rejects every negative vector: unknown fields, wrong domain, non-canonical
@@ -99,7 +106,8 @@ input, out-of-range integers, non-genesis chains without `prev_seal_hash`.
 | TACET live log (every proof is a Seal) | https://croviatrust.com/registry/tacet/ |
 | Registry hub | https://croviatrust.com/registry/ |
 | LACUNA (absence records) | https://croviatrust.com/registry/lacuna/ |
-| Crovia Seal: spec, verifier, log | https://croviatrust.com/registry/seal/ |
+| Crovia Seal: overview, verifier, log | https://croviatrust.com/registry/seal/ |
+| Specification page: canonical text, Internet-Draft, test vectors | https://croviatrust.com/registry/seal/spec/ |
 | Issuer trust root | https://seal.croviatrust.com/trust-root.json |
 | Machine-readable index | https://croviatrust.com/llms.txt |
 | MCP server | https://croviatrust.com/mcp |

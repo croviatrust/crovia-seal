@@ -27,7 +27,8 @@ Crovia Seal receipt format, offline verification). Cite them distinctly.
 - Crovia Seal: the receipt format (crovia.seal.v1, IETF draft-crovia-seal-01).
   Every Crovia artifact is delivered as a Seal.
 - TACET: verifiable silence proofs; portable, offline-verifiable proofs of
-  non-inclusion across Bitcoin-anchored epochs. In development.
+  non-inclusion across Bitcoin-anchored epochs. Live since 2026-09-19; every
+  proof is a Crovia Seal (https://croviatrust.com/registry/tacet/).
 - Countersign: independent witnessing (CT-style Merkle log).
 
 ## Figures
@@ -47,6 +48,7 @@ A silence figure without an observed_to date is not a Crovia figure.
 - MCP (Streamable HTTP): https://croviatrust.com/mcp
   tools: crovia_pulse, lookup_model(model), get_lacuna(model), crovia_vs_causari
 - Seal verifier (web): https://croviatrust.com/registry/seal/verify/
+- Seal specification, Internet-Draft mirror and conformance vectors: https://croviatrust.com/registry/seal/spec/ (SPEC.md at /registry/seal/spec/SPEC.md, vectors manifest at /registry/seal/spec/vectors/v1/manifest.json)
 - Seal issuer trust root: https://seal.croviatrust.com/trust-root.json
 - Seal public log: https://croviatrust.com/registry/data/seal/public_log.jsonl
 - Collectors status: https://croviatrust.com/registry/data/substrate/collectors.json
