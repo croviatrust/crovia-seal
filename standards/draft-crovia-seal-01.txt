@@ -5,7 +5,7 @@
 Independent Submission                                      T. En Nakhai
 Internet-Draft                                              Crovia Trust
 Intended status: Informational                                  May 2026
-Expires: 5 November 2026
+Expires: 6 November 2026
 
 
 The Crovia Seal: A Cryptographic Receipt Format for AI-Generated Output
@@ -53,7 +53,7 @@ Status of This Memo
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 1]
+En Nakhai                Expires 6 November 2026                [Page 1]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 2]
+En Nakhai                Expires 6 November 2026                [Page 2]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -165,7 +165,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 3]
+En Nakhai                Expires 6 November 2026                [Page 3]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -221,7 +221,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 4]
+En Nakhai                Expires 6 November 2026                [Page 4]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 5]
+En Nakhai                Expires 6 November 2026                [Page 5]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -333,7 +333,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 6]
+En Nakhai                Expires 6 November 2026                [Page 6]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -389,7 +389,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 7]
+En Nakhai                Expires 6 November 2026                [Page 7]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -445,7 +445,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 8]
+En Nakhai                Expires 6 November 2026                [Page 8]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -501,7 +501,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026                [Page 9]
+En Nakhai                Expires 6 November 2026                [Page 9]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -557,7 +557,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 10]
+En Nakhai                Expires 6 November 2026               [Page 10]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -613,7 +613,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 11]
+En Nakhai                Expires 6 November 2026               [Page 11]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -669,7 +669,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 12]
+En Nakhai                Expires 6 November 2026               [Page 12]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -725,7 +725,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 13]
+En Nakhai                Expires 6 November 2026               [Page 13]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -781,7 +781,7 @@ Internet-Draft               Crovia Seal v1                     May 2026
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 14]
+En Nakhai                Expires 6 November 2026               [Page 14]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -837,7 +837,7 @@ Appendix B.  Changelog
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 15]
+En Nakhai                Expires 6 November 2026               [Page 15]
 
 Internet-Draft               Crovia Seal v1                     May 2026
 
@@ -893,4 +893,4 @@ Author's Address
 
 
 
-En Nakhai                Expires 5 November 2026               [Page 16]
+En Nakhai                Expires 6 November 2026               [Page 16]
