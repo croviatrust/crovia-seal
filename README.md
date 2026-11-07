@@ -122,3 +122,10 @@ Repositories: [crovia-seal](https://github.com/croviatrust/crovia-seal) (the sta
 
 Crovia records facts about public surfaces. It does not infer intent, allege
 wrongdoing or enforce compliance. Contact: info@croviatrust.com.
+
+## Evidence Gate profile
+
+[Crovia Evidence Gate v1](docs/profiles/evidence-gate.md) lets a recipient
+verify signed check results for one exact artifact and recipient-owned
+request. It includes a Python API and an offline CLI for release and
+agent handoffs.

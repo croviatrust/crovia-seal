@@ -253,7 +253,7 @@ def _validate_structure(seal: Dict[str, Any]) -> None:
     for fl in ("input_len", "output_len"):
         _require(isinstance(sub[fl], int) and not isinstance(sub[fl], bool) and sub[fl] >= 0,
                  f"subject.{fl} must be non-negative integer")
-    _require(sub["modality"] in ALLOWED_MODALITIES,
+    _require(isinstance(sub["modality"], str) and sub["modality"] in ALLOWED_MODALITIES,
              f"subject.modality must be one of {sorted(ALLOWED_MODALITIES)}")
 
     # generator
